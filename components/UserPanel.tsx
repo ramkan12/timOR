@@ -47,6 +47,12 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
     return () => clearInterval(t)
   }, [])
 
+  // Poll every 8 seconds as a fallback in case real-time subscription misses an update
+  useEffect(() => {
+    const t = setInterval(() => setFetchKey(k => k + 1), 8000)
+    return () => clearInterval(t)
+  }, [])
+
   // Fetch tasks
   useEffect(() => {
     supabase
@@ -114,6 +120,21 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
     await supabase.from('tasks').delete().eq('id', taskId)
   }
 
+  async function handleStartTimer(taskToStart: Task) {
+    const runningTask = tasks.find(t => t.id !== taskToStart.id && !!t.timer_started_at)
+    if (runningTask) {
+      // Stop the other running timer and bank its elapsed seconds
+      const elapsed = Math.floor((Date.now() - new Date(runningTask.timer_started_at!).getTime()) / 1000)
+      const stopped: Task = { ...runningTask, actual_seconds: runningTask.actual_seconds + elapsed, timer_started_at: null }
+      setTasks(prev => prev.map(t => t.id === stopped.id ? stopped : t))
+      await supabase.from('tasks').update({ actual_seconds: stopped.actual_seconds, timer_started_at: null }).eq('id', runningTask.id)
+    }
+    // Start the new timer
+    const started: Task = { ...taskToStart, timer_started_at: new Date().toISOString() }
+    setTasks(prev => prev.map(t => t.id === started.id ? started : t))
+    await supabase.from('tasks').update({ timer_started_at: started.timer_started_at }).eq('id', taskToStart.id)
+  }
+
   const estimatedMinutes = tasks.reduce((sum, t) => sum + t.estimated_minutes, 0)
 
   // Compute actual seconds for the progress bar:
@@ -149,7 +170,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
         <div className="flex items-center justify-between">
           <button
             onClick={() => onDateChange(addDays(selectedDate, -1))}
-            className="p-1 rounded-lg text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-colors"
+            className="p-1.5 rounded-lg text-stone-400 hover:text-stone-800 hover:bg-stone-200 active:bg-stone-300 transition-colors"
           >
             <ChevronLeft size={16} />
           </button>
@@ -157,7 +178,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
           <button
             onClick={() => onDateChange(addDays(selectedDate, 1))}
             disabled={isToday}
-            className="p-1 rounded-lg text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-colors disabled:opacity-30 disabled:cursor-default"
+            className="p-1.5 rounded-lg text-stone-400 hover:text-stone-800 hover:bg-stone-200 active:bg-stone-300 transition-colors disabled:opacity-30 disabled:cursor-default"
           >
             <ChevronRight size={16} />
           </button>
@@ -184,6 +205,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
               onUpdate={(updated) => setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))}
               onDelete={() => handleDeleteTask(task.id)}
               onEdit={() => setEditingTask(task)}
+              onStartTimer={() => handleStartTimer(task)}
             />
           ))
         )}

@@ -18,7 +18,7 @@ function IdentityModal({ onSelect }: { onSelect: (user: UserId) => void }) {
           </div>
           <h1 className="text-3xl font-bold text-stone-800">timOR</h1>
           <p className="text-stone-500 text-sm max-w-xs mx-auto">
-            Your daily accountability space. Work hard, earn your time together.
+            Let's lock in together, loser :)
           </p>
         </div>
 
@@ -30,14 +30,14 @@ function IdentityModal({ onSelect }: { onSelect: (user: UserId) => void }) {
               className="flex-1 rounded-2xl bg-rose-50 border-2 border-rose-200 hover:border-rose-400 hover:bg-rose-100 transition-all py-5 px-6"
             >
               <p className="font-bold text-rose-700 text-lg">Riham</p>
-              <p className="text-xs text-rose-400 mt-0.5">Software Engineer · AI</p>
+              <p className="text-xs text-rose-400 mt-0.5">Software Engineer</p>
             </button>
             <button
               onClick={() => onSelect('omar')}
               className="flex-1 rounded-2xl bg-sky-50 border-2 border-sky-200 hover:border-sky-400 hover:bg-sky-100 transition-all py-5 px-6"
             >
               <p className="font-bold text-sky-700 text-lg">Omar</p>
-              <p className="text-xs text-sky-400 mt-0.5">Robotics Engineer · CMU</p>
+              <p className="text-xs text-sky-400 mt-0.5">Robotics Engineer</p>
             </button>
           </div>
         </div>
@@ -71,9 +71,9 @@ export default function Home() {
       {/* Top bar */}
       <header className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-b border-stone-200 bg-white">
         <button
-          onClick={() => setSelectedDate(todayString())}
-          className="flex items-center gap-2 hover:opacity-70 transition-opacity"
-          title="Back to today"
+          onClick={() => window.location.reload()}
+          className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-stone-100 active:bg-stone-200 transition-colors"
+          title="Refresh"
         >
           <Heart size={16} className="text-rose-400" fill="currentColor" />
           <span className="font-bold text-stone-700 tracking-tight">timOR</span>

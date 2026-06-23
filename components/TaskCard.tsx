@@ -13,9 +13,10 @@ interface Props {
   onUpdate: (updated: Task) => void
   onDelete: () => void
   onEdit: () => void
+  onStartTimer: () => void  // parent stops other timers first, then starts this one
 }
 
-export default function TaskCard({ task, currentUser, isReadOnly, onUpdate, onDelete, onEdit }: Props) {
+export default function TaskCard({ task, currentUser, isReadOnly, onUpdate, onDelete, onEdit, onStartTimer }: Props) {
   const isOwner = currentUser === task.user_id
   const canInteract = isOwner && !isReadOnly
 
@@ -50,32 +51,23 @@ export default function TaskCard({ task, currentUser, isReadOnly, onUpdate, onDe
   const isRunning = !!task.timer_started_at
   const isRiham = task.user_id === 'riham'
 
-  async function toggleTimer() {
-    if (!canInteract) return
-    if (isRunning) {
-      const elapsed = getElapsedSeconds(task.timer_started_at)
-      const updated: Task = {
-        ...task,
-        actual_seconds: task.actual_seconds + elapsed,
-        timer_started_at: null,
-      }
-      onUpdate(updated)
-      await supabase.from('tasks').update({
-        actual_seconds: updated.actual_seconds,
-        timer_started_at: null,
-      }).eq('id', task.id)
-    } else {
-      const updated: Task = { ...task, timer_started_at: new Date().toISOString() }
-      onUpdate(updated)
-      await supabase.from('tasks').update({ timer_started_at: updated.timer_started_at }).eq('id', task.id)
+  async function stopTimer() {
+    const elapsed = getElapsedSeconds(task.timer_started_at)
+    const updated: Task = {
+      ...task,
+      actual_seconds: task.actual_seconds + elapsed,
+      timer_started_at: null,
     }
+    onUpdate(updated)
+    await supabase.from('tasks').update({
+      actual_seconds: updated.actual_seconds,
+      timer_started_at: null,
+    }).eq('id', task.id)
   }
 
   async function markDone() {
     if (!canInteract) return
     const wasComplete = task.is_complete
-    // Only accumulate any live elapsed seconds if timer was running — never inflate to estimated.
-    // The progress bar formula handles crediting estimated time for completed tasks.
     const extraSeconds = isRunning && !wasComplete ? getElapsedSeconds(task.timer_started_at) : 0
     const updated: Task = {
       ...task,
@@ -92,12 +84,12 @@ export default function TaskCard({ task, currentUser, isReadOnly, onUpdate, onDe
   }
 
   return (
-    <div className={`rounded-xl border p-4 transition-all duration-200 ${
+    <div className={`rounded-xl border p-4 transition-all duration-150 ${
       task.is_complete
-        ? 'border-stone-200 bg-stone-50 opacity-70'
+        ? 'border-stone-200 bg-stone-50 opacity-60 hover:opacity-90 hover:bg-white hover:shadow-sm cursor-pointer'
         : isRunning
-        ? `border-stone-200 bg-white shadow-sm ring-1 ${isRiham ? 'ring-rose-300' : 'ring-sky-300'}`
-        : 'border-stone-200 bg-white shadow-sm'
+        ? `border-stone-200 bg-white shadow-md ring-1 ${isRiham ? 'ring-rose-300' : 'ring-sky-300'}`
+        : 'border-stone-200 bg-white shadow-sm hover:shadow-lg hover:border-stone-400 hover:bg-stone-50 hover:-translate-y-0.5 cursor-pointer'
     }`}>
       <div className="flex items-start gap-3">
 
@@ -116,8 +108,8 @@ export default function TaskCard({ task, currentUser, isReadOnly, onUpdate, onDe
             className={`transition-colors ${canInteract ? 'cursor-pointer' : 'cursor-default'}`}
           >
             {task.is_complete
-              ? <CheckCircle2 size={18} className="text-emerald-500" />
-              : <Circle size={18} className={`text-stone-300 ${canInteract ? 'hover:text-stone-400' : ''}`} />
+              ? <CheckCircle2 size={18} className="text-emerald-500 hover:text-emerald-400" />
+              : <Circle size={18} className={`text-stone-300 ${canInteract ? 'hover:text-stone-500' : ''}`} />
             }
           </button>
 
@@ -125,14 +117,14 @@ export default function TaskCard({ task, currentUser, isReadOnly, onUpdate, onDe
             <div className="absolute left-0 top-6 z-20 w-44 rounded-xl bg-white shadow-xl border border-stone-100 py-1 overflow-hidden">
               <button
                 onClick={() => { markDone(); setShowMenu(false) }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-stone-700 hover:bg-stone-100 active:bg-stone-200 transition-colors"
               >
                 <CheckCircle2 size={14} className="text-emerald-500" />
                 Mark as done
               </button>
               <button
                 onClick={() => { onEdit(); setShowMenu(false) }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-stone-700 hover:bg-stone-100 active:bg-stone-200 transition-colors"
               >
                 <Pencil size={14} className="text-stone-400" />
                 Edit task
@@ -140,7 +132,7 @@ export default function TaskCard({ task, currentUser, isReadOnly, onUpdate, onDe
               <div className="my-1 border-t border-stone-100" />
               <button
                 onClick={() => { onDelete(); setShowMenu(false) }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-500 hover:bg-red-50 active:bg-red-100 transition-colors"
               >
                 <Trash2 size={14} />
                 Delete task
@@ -174,11 +166,13 @@ export default function TaskCard({ task, currentUser, isReadOnly, onUpdate, onDe
         {/* Timer button */}
         {canInteract && !task.is_complete && (
           <button
-            onClick={toggleTimer}
+            onClick={() => isRunning ? stopTimer() : onStartTimer()}
             className={`flex-shrink-0 rounded-lg p-1.5 transition-colors ${
               isRunning
-                ? isRiham ? 'bg-rose-100 text-rose-600 hover:bg-rose-200' : 'bg-sky-100 text-sky-600 hover:bg-sky-200'
-                : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
+                ? isRiham
+                  ? 'bg-rose-100 text-rose-600 hover:bg-rose-200 active:bg-rose-300'
+                  : 'bg-sky-100 text-sky-600 hover:bg-sky-200 active:bg-sky-300'
+                : 'bg-stone-100 text-stone-500 hover:bg-stone-200 active:bg-stone-300'
             }`}
             title={isRunning ? 'Stop timer' : 'Start timer'}
           >
