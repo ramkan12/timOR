@@ -151,7 +151,7 @@ export default function TaskCard({ task, currentUser, isReadOnly, onUpdate, onDe
           <div className="mt-2 flex items-center gap-3 text-xs text-stone-400">
             <span className="flex items-center gap-1">
               <Clock size={11} />
-              est. {minutesToDisplay(task.estimated_minutes)}
+              {minutesToDisplay(task.estimated_minutes)}
             </span>
             {totalActualSeconds > 0 && (
               <span className={`font-medium ${isRunning ? (isRiham ? 'text-rose-500' : 'text-sky-500') : 'text-stone-500'}`}>
