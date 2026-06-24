@@ -37,7 +37,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
   const isOwner = currentUser === panelUserId
   const isToday = selectedDate === todayString()
 
-  const displayName = panelUserId === 'riham' ? 'Riham' : 'Omar'
+  const displayName = panelUserId === 'riham' ? 'Rihamie' : 'Omarie'
   const accentBg = panelUserId === 'riham' ? 'from-rose-50' : 'from-sky-50'
   const addBtnClass = panelUserId === 'riham'
     ? 'bg-rose-500 hover:bg-rose-600 text-white'
@@ -153,7 +153,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
   }, 0)
 
   return (
-    <div className={`flex flex-col h-full bg-gradient-to-b ${accentBg} to-white`}>
+    <div className={`flex flex-col md:flex-1 md:min-h-0 bg-gradient-to-b ${accentBg} to-white`}>
       {/* Panel header */}
       <div className="px-5 pt-5 pb-4 border-b border-stone-100 space-y-3">
         <div className="flex items-center justify-between">

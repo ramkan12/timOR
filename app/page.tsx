@@ -27,14 +27,14 @@ function IdentityModal({ onSelect }: { onSelect: (user: UserId) => void }) {
               onClick={() => onSelect('riham')}
               className="flex-1 rounded-2xl bg-rose-50 border-2 border-rose-200 hover:border-rose-400 hover:bg-rose-100 transition-all py-5 px-6"
             >
-              <p className="font-bold text-rose-700 text-lg">Riham</p>
+              <p className="font-bold text-rose-700 text-lg">Rihamie</p>
               <p className="text-xs text-rose-400 mt-0.5">Software Engineer</p>
             </button>
             <button
               onClick={() => onSelect('omar')}
               className="flex-1 rounded-2xl bg-sky-50 border-2 border-sky-200 hover:border-sky-400 hover:bg-sky-100 transition-all py-5 px-6"
             >
-              <p className="font-bold text-sky-700 text-lg">Omar</p>
+              <p className="font-bold text-sky-700 text-lg">Omarie</p>
               <p className="text-xs text-sky-400 mt-0.5">Robotics Engineer</p>
             </button>
           </div>
@@ -80,7 +80,7 @@ export default function Home() {
           <span className="text-xs text-stone-500">
             Logged in as{' '}
             <span className={`font-semibold ${currentUser === 'riham' ? 'text-rose-600' : 'text-sky-600'}`}>
-              {currentUser === 'riham' ? 'Riham' : 'Omar'}
+              {currentUser === 'riham' ? 'Rihamie' : 'Omarie'}
             </span>
             {' · '}
             <button
@@ -94,7 +94,7 @@ export default function Home() {
       </header>
 
       {/* Split panels */}
-      <main className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-stone-200">
+      <main className="flex-1 min-h-0 overflow-y-auto md:overflow-hidden flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-stone-200">
         <UserPanel
           panelUserId="riham"
           currentUser={currentUser}

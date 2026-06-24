@@ -124,10 +124,10 @@ export default function CalendarModal({ selectedDate, onSelectDate, onClose }: P
           {/* Legend */}
           <div className="flex items-center justify-end gap-3 mb-2 px-1">
             <span className="flex items-center gap-1 text-xs text-stone-400">
-              <span className="w-2 h-2 rounded-full bg-rose-400 inline-block" /> Riham
+              <span className="w-2 h-2 rounded-full bg-rose-400 inline-block" /> Rihamie
             </span>
             <span className="flex items-center gap-1 text-xs text-stone-400">
-              <span className="w-2 h-2 rounded-full bg-sky-400 inline-block" /> Omar
+              <span className="w-2 h-2 rounded-full bg-sky-400 inline-block" /> Omarie
             </span>
           </div>
 
