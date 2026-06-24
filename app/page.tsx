@@ -1,12 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Heart } from 'lucide-react'
 import { UserId } from '@/types'
 import { todayString } from '@/lib/utils'
 import UserPanel from '@/components/UserPanel'
-
-const STORAGE_KEY = 'timor_user'
 
 function IdentityModal({ onSelect }: { onSelect: (user: UserId) => void }) {
   return (
@@ -50,21 +48,11 @@ function IdentityModal({ onSelect }: { onSelect: (user: UserId) => void }) {
 
 export default function Home() {
   const [currentUser, setCurrentUser] = useState<UserId | null>(null)
-  const [hydrated, setHydrated] = useState(false)
   const [selectedDate, setSelectedDate] = useState(todayString())
 
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY) as UserId | null
-    if (saved === 'riham' || saved === 'omar') setCurrentUser(saved)
-    setHydrated(true)
-  }, [])
-
   function handleIdentitySelect(user: UserId) {
-    localStorage.setItem(STORAGE_KEY, user)
     setCurrentUser(user)
   }
-
-  if (!hydrated) return null
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-stone-50">
@@ -86,10 +74,7 @@ export default function Home() {
             </span>
             {' · '}
             <button
-              onClick={() => {
-                localStorage.removeItem(STORAGE_KEY)
-                setCurrentUser(null)
-              }}
+              onClick={() => setCurrentUser(null)}
               className="text-stone-400 hover:text-stone-600 underline transition-colors"
             >
               switch
