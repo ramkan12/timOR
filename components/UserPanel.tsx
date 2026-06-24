@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Task, User, UserId } from '@/types'
 import { todayString, formatDateLabel } from '@/lib/utils'
@@ -9,6 +9,7 @@ import TaskCard from './TaskCard'
 import ProgressBar from './ProgressBar'
 import SleepToggle from './SleepToggle'
 import AddTaskModal from './AddTaskModal'
+import CalendarModal from './CalendarModal'
 
 interface Props {
   panelUserId: UserId
@@ -28,6 +29,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
   const [user, setUser] = useState<User | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const [showCalendar, setShowCalendar] = useState(false)
   const [now, setNow] = useState(Date.now())
   const [fetchKey, setFetchKey] = useState(0)
 
@@ -174,7 +176,16 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
           >
             <ChevronLeft size={16} />
           </button>
-          <span className="text-sm font-medium text-stone-600">{formatDateLabel(selectedDate)}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-medium text-stone-600">{formatDateLabel(selectedDate)}</span>
+            <button
+              onClick={() => setShowCalendar(true)}
+              className="p-1 rounded-md text-stone-400 hover:text-stone-700 hover:bg-stone-200 transition-colors"
+              title="Open calendar"
+            >
+              <Calendar size={13} />
+            </button>
+          </div>
           <button
             onClick={() => onDateChange(addDays(selectedDate, 1))}
             disabled={isToday}
@@ -231,6 +242,15 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
           date={selectedDate}
           onClose={() => setShowAddModal(false)}
           onTaskAdded={() => setFetchKey(k => k + 1)}
+        />
+      )}
+
+      {/* Calendar modal */}
+      {showCalendar && (
+        <CalendarModal
+          selectedDate={selectedDate}
+          onSelectDate={(date) => { onDateChange(date); setShowCalendar(false) }}
+          onClose={() => setShowCalendar(false)}
         />
       )}
 

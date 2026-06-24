@@ -1,4 +1,4 @@
-import { formatDistanceToNow, format, isToday, isYesterday } from 'date-fns'
+import { formatDistanceToNow, format } from 'date-fns'
 
 export const GOAL_MINUTES = 420 // 7 hours
 
@@ -34,13 +34,18 @@ export function formatSleepTimestamp(timestamp: string): string {
   return formatDistanceToNow(new Date(timestamp), { addSuffix: true })
 }
 
-export function formatDateLabel(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00')
-  if (isToday(d)) return 'Today'
-  if (isYesterday(d)) return 'Yesterday'
-  return format(d, 'MMM d, yyyy')
+export function todayString(): string {
+  const now = new Date()
+  if (now.getHours() < 6) now.setDate(now.getDate() - 1)
+  return format(now, 'yyyy-MM-dd')
 }
 
-export function todayString(): string {
-  return format(new Date(), 'yyyy-MM-dd')
+export function formatDateLabel(dateStr: string): string {
+  const today = todayString()
+  const d = new Date(today + 'T00:00:00')
+  d.setDate(d.getDate() - 1)
+  const yesterday = format(d, 'yyyy-MM-dd')
+  if (dateStr === today) return 'Today'
+  if (dateStr === yesterday) return 'Yesterday'
+  return format(new Date(dateStr + 'T00:00:00'), 'MMM d, yyyy')
 }
