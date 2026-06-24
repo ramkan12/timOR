@@ -126,7 +126,9 @@ Both panels share a single `selectedDate` state in `page.tsx`. Navigating dates 
 
 **Add a new field to tasks:** update `types/index.ts`, update the Supabase schema, update `AddTaskModal` insert/update, update `TaskCard` display.
 
-**Task reordering:** Tasks are sorted by `sort_order asc, created_at asc`. Drag handles (GripVertical) appear on TaskCards only for the owner on today's date. `@dnd-kit/sortable` handles drag-and-drop; on drop all tasks in the panel get their `sort_order` renumbered 0..n and persisted. Starting a timer also bumps that task to `sort_order = 0` (top).
+**Task ordering:** Tasks are fetched ordered by `is_complete asc, sort_order asc, created_at asc` so incomplete tasks always appear above completed ones. Each group (incomplete / completed) has its own `DndContext` so drag handles (GripVertical) reorder within the group only. On drop, `sort_order` is renumbered 0..n for that group and persisted. Starting a timer bumps that task to `sort_order = 0` within the incomplete group. Marking a task done moves it to the bottom of the completed group; un-marking moves it to the bottom of the incomplete group.
+
+**Color identity:** Rihamie = rose throughout (progress bar `bg-rose-300`, ring, buttons). Omarie = sky throughout (`bg-sky-400`, ring, buttons). Both share amber (≥75% progress) and emerald (goal reached) milestone colors.
 
 **Change the 7-hour goal:** edit `GOAL_MINUTES` in `lib/utils.ts`.
 

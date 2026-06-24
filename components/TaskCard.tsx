@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Play, Square, CheckCircle2, Circle, Clock, Pencil, Trash2, GripVertical } from 'lucide-react'
+import { Play, Square, CheckCircle2, Clock, Pencil, Trash2, GripVertical } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Task, UserId } from '@/types'
@@ -17,9 +17,10 @@ interface Props {
   onDelete: () => void
   onEdit: () => void
   onStartTimer: () => void
+  onMarkDone: () => void
 }
 
-export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, onUpdate, onDelete, onEdit, onStartTimer }: Props) {
+export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, onUpdate, onDelete, onEdit, onStartTimer, onMarkDone }: Props) {
   const isOwner = currentUser === task.user_id
   const canInteract = isOwner && !isReadOnly
 
@@ -75,22 +76,9 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
     }).eq('id', task.id)
   }
 
-  async function markDone() {
+  function markDone() {
     if (!canInteract) return
-    const wasComplete = task.is_complete
-    const extraSeconds = isRunning && !wasComplete ? getElapsedSeconds(task.timer_started_at) : 0
-    const updated: Task = {
-      ...task,
-      is_complete: !wasComplete,
-      timer_started_at: null,
-      actual_seconds: task.actual_seconds + extraSeconds,
-    }
-    onUpdate(updated)
-    await supabase.from('tasks').update({
-      is_complete: updated.is_complete,
-      timer_started_at: null,
-      actual_seconds: updated.actual_seconds,
-    }).eq('id', task.id)
+    onMarkDone()
   }
 
   const cardClass = task.is_complete
@@ -120,57 +108,6 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
           </button>
         )}
 
-        {/* Circle / action menu */}
-        <div className="relative mt-0.5 flex-shrink-0" ref={menuRef}>
-          <button
-            onClick={() => {
-              if (!canInteract) return
-              if (task.is_complete) {
-                markDone()
-              } else {
-                setShowMenu(v => !v)
-              }
-            }}
-            disabled={!canInteract}
-            className={`transition-colors ${canInteract ? 'cursor-pointer' : 'cursor-default'}`}
-          >
-            {task.is_complete
-              ? <CheckCircle2 size={18} className="text-emerald-500 hover:text-emerald-400" />
-              : <Circle size={18} className={isSleeping
-                  ? `text-slate-600 ${canInteract ? 'hover:text-slate-400' : ''}`
-                  : `text-stone-300 ${canInteract ? 'hover:text-stone-500' : ''}`}
-                />
-            }
-          </button>
-
-          {showMenu && canInteract && (
-            <div className={`absolute left-0 top-6 z-20 w-44 rounded-xl shadow-xl border py-1 overflow-hidden ${isSleeping ? 'bg-slate-800 border-slate-700' : 'bg-white border-stone-100'}`}>
-              <button
-                onClick={() => { markDone(); setShowMenu(false) }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${isSleeping ? 'text-slate-200 hover:bg-slate-700 active:bg-slate-600' : 'text-stone-700 hover:bg-stone-100 active:bg-stone-200'}`}
-              >
-                <CheckCircle2 size={14} className="text-emerald-500" />
-                Mark as done
-              </button>
-              <button
-                onClick={() => { onEdit(); setShowMenu(false) }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${isSleeping ? 'text-slate-200 hover:bg-slate-700 active:bg-slate-600' : 'text-stone-700 hover:bg-stone-100 active:bg-stone-200'}`}
-              >
-                <Pencil size={14} className={isSleeping ? 'text-slate-500' : 'text-stone-400'} />
-                Edit task
-              </button>
-              <div className={`my-1 border-t ${isSleeping ? 'border-slate-700' : 'border-stone-100'}`} />
-              <button
-                onClick={() => { onDelete(); setShowMenu(false) }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:bg-red-950/50 active:bg-red-950 transition-colors"
-              >
-                <Trash2 size={14} />
-                Delete task
-              </button>
-            </div>
-          )}
-        </div>
-
         <div className="flex-1 min-w-0">
           <p className={`font-medium text-sm leading-snug ${
             task.is_complete
@@ -197,23 +134,74 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
           </div>
         </div>
 
-        {/* Timer button */}
-        {canInteract && !task.is_complete && (
-          <button
-            onClick={() => isRunning ? stopTimer() : onStartTimer()}
-            className={`flex-shrink-0 rounded-lg p-1.5 transition-colors ${
-              isRunning
-                ? isRiham
-                  ? isSleeping ? 'bg-rose-900/60 text-rose-400 hover:bg-rose-900 active:bg-rose-800' : 'bg-rose-100 text-rose-600 hover:bg-rose-200 active:bg-rose-300'
-                  : isSleeping ? 'bg-sky-900/60 text-sky-400 hover:bg-sky-900 active:bg-sky-800' : 'bg-sky-100 text-sky-600 hover:bg-sky-200 active:bg-sky-300'
-                : isSleeping
-                  ? 'bg-slate-700 text-slate-300 hover:bg-slate-600 active:bg-slate-500'
-                  : 'bg-stone-100 text-stone-500 hover:bg-stone-200 active:bg-stone-300'
-            }`}
-            title={isRunning ? 'Stop timer' : 'Start timer'}
-          >
-            {isRunning ? <Square size={14} /> : <Play size={14} />}
-          </button>
+        {/* Right column: timer on top, action icon below */}
+        {canInteract && (
+          <div className="flex flex-col items-center gap-2 flex-shrink-0">
+            {/* Timer button */}
+            {!task.is_complete && (
+              <button
+                onClick={() => isRunning ? stopTimer() : onStartTimer()}
+                className={`rounded-lg p-1.5 transition-colors ${
+                  isRunning
+                    ? isRiham
+                      ? isSleeping ? 'bg-rose-900/60 text-rose-400 hover:bg-rose-900 active:bg-rose-800' : 'bg-rose-100 text-rose-600 hover:bg-rose-200 active:bg-rose-300'
+                      : isSleeping ? 'bg-sky-900/60 text-sky-400 hover:bg-sky-900 active:bg-sky-800' : 'bg-sky-100 text-sky-600 hover:bg-sky-200 active:bg-sky-300'
+                    : isSleeping
+                      ? 'bg-slate-700 text-slate-300 hover:bg-slate-600 active:bg-slate-500'
+                      : 'bg-stone-100 text-stone-500 hover:bg-stone-200 active:bg-stone-300'
+                }`}
+                title={isRunning ? 'Stop timer' : 'Start timer'}
+              >
+                {isRunning ? <Square size={14} /> : <Play size={14} />}
+              </button>
+            )}
+
+            {/* Action icon / menu */}
+            <div className="relative mt-2.5" ref={menuRef}>
+              <button
+                onClick={() => {
+                  if (task.is_complete) {
+                    markDone()
+                  } else {
+                    setShowMenu(v => !v)
+                  }
+                }}
+                className="transition-colors"
+              >
+                {task.is_complete
+                  ? <CheckCircle2 size={16} className="text-emerald-500 hover:text-emerald-400" />
+                  : <Pencil size={13} className={isSleeping ? 'text-slate-600 hover:text-slate-400' : 'text-stone-300 hover:text-stone-500'} />
+                }
+              </button>
+
+              {showMenu && (
+                <div className={`absolute right-0 top-full mt-1 z-20 w-44 rounded-xl shadow-xl border py-1 overflow-hidden ${isSleeping ? 'bg-slate-800 border-slate-700' : 'bg-white border-stone-100'}`}>
+                  <button
+                    onClick={() => { markDone(); setShowMenu(false) }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${isSleeping ? 'text-slate-200 hover:bg-slate-700 active:bg-slate-600' : 'text-stone-700 hover:bg-stone-100 active:bg-stone-200'}`}
+                  >
+                    <CheckCircle2 size={14} className="text-emerald-500" />
+                    Mark as done
+                  </button>
+                  <button
+                    onClick={() => { onEdit(); setShowMenu(false) }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${isSleeping ? 'text-slate-200 hover:bg-slate-700 active:bg-slate-600' : 'text-stone-700 hover:bg-stone-100 active:bg-stone-200'}`}
+                  >
+                    <Pencil size={14} className={isSleeping ? 'text-slate-500' : 'text-stone-400'} />
+                    Edit task
+                  </button>
+                  <div className={`my-1 border-t ${isSleeping ? 'border-slate-700' : 'border-stone-100'}`} />
+                  <button
+                    onClick={() => { onDelete(); setShowMenu(false) }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:bg-red-950/50 active:bg-red-950 transition-colors"
+                  >
+                    <Trash2 size={14} />
+                    Delete task
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>

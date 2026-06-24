@@ -6,11 +6,12 @@ interface Props {
   estimatedMinutes: number
   actualSeconds: number
   isSleeping?: boolean
+  isRiham?: boolean
 }
 
 const GOAL_SECONDS = GOAL_MINUTES * 60
 
-export default function ProgressBar({ estimatedMinutes, actualSeconds, isSleeping }: Props) {
+export default function ProgressBar({ estimatedMinutes, actualSeconds, isSleeping, isRiham = true }: Props) {
   const actualPct = Math.min((actualSeconds / GOAL_SECONDS) * 100, 100)
   const estimatedPct = Math.min((estimatedMinutes / GOAL_MINUTES) * 100, 100)
   const goalReached = actualSeconds >= GOAL_SECONDS
@@ -19,7 +20,7 @@ export default function ProgressBar({ estimatedMinutes, actualSeconds, isSleepin
     ? 'bg-emerald-500'
     : actualSeconds >= GOAL_SECONDS * 0.75
     ? 'bg-amber-400'
-    : 'bg-rose-300'
+    : isRiham ? 'bg-rose-300' : 'bg-sky-400'
 
   return (
     <div className="space-y-1.5">

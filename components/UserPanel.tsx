@@ -6,7 +6,7 @@ import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter,
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { supabase } from '@/lib/supabase'
 import { Task, User, UserId } from '@/types'
-import { todayString, formatDateLabel } from '@/lib/utils'
+import { todayString, formatDateLabel, getElapsedSeconds } from '@/lib/utils'
 import TaskCard from './TaskCard'
 import ProgressBar from './ProgressBar'
 import SleepToggle from './SleepToggle'
@@ -107,6 +107,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
       .select('*')
       .eq('user_id', panelUserId)
       .eq('date', selectedDate)
+      .order('is_complete', { ascending: true })
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true })
       .then(({ data, error }) => { if (!error && data) setTasks(data as Task[]) })
@@ -174,13 +175,44 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     if (!over || active.id === over.id) return
-    const oldIndex = tasks.findIndex(t => t.id === active.id)
-    const newIndex = tasks.findIndex(t => t.id === over.id)
-    const reordered = arrayMove(tasks, oldIndex, newIndex).map((t, i) => ({ ...t, sort_order: i }))
-    setTasks(reordered)
+    const incomplete = tasks.filter(t => !t.is_complete)
+    const oldIndex = incomplete.findIndex(t => t.id === active.id)
+    const newIndex = incomplete.findIndex(t => t.id === over.id)
+    const reordered = arrayMove(incomplete, oldIndex, newIndex).map((t, i) => ({ ...t, sort_order: i }))
+    setTasks(prev => [...reordered, ...prev.filter(t => t.is_complete)])
     await Promise.all(reordered.map((t, i) =>
       supabase.from('tasks').update({ sort_order: i }).eq('id', t.id)
     ))
+  }
+
+  async function handleCompletedDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const completed = tasks.filter(t => t.is_complete)
+    const oldIndex = completed.findIndex(t => t.id === active.id)
+    const newIndex = completed.findIndex(t => t.id === over.id)
+    const reordered = arrayMove(completed, oldIndex, newIndex).map((t, i) => ({ ...t, sort_order: i }))
+    setTasks(prev => [...prev.filter(t => !t.is_complete), ...reordered])
+    await Promise.all(reordered.map((t, i) =>
+      supabase.from('tasks').update({ sort_order: i }).eq('id', t.id)
+    ))
+  }
+
+  async function handleMarkDone(task: Task) {
+    const wasComplete = task.is_complete
+    const extraSeconds = !wasComplete && task.timer_started_at ? getElapsedSeconds(task.timer_started_at) : 0
+
+    if (!wasComplete) {
+      const completedCount = tasks.filter(t => t.is_complete && t.id !== task.id).length
+      const updated: Task = { ...task, is_complete: true, timer_started_at: null, actual_seconds: task.actual_seconds + extraSeconds, sort_order: completedCount }
+      setTasks(prev => prev.map(t => t.id === task.id ? updated : t))
+      await supabase.from('tasks').update({ is_complete: true, timer_started_at: null, actual_seconds: updated.actual_seconds, sort_order: completedCount }).eq('id', task.id)
+    } else {
+      const incompleteCount = tasks.filter(t => !t.is_complete && t.id !== task.id).length
+      const updated: Task = { ...task, is_complete: false, timer_started_at: null, sort_order: incompleteCount }
+      setTasks(prev => prev.map(t => t.id === task.id ? updated : t))
+      await supabase.from('tasks').update({ is_complete: false, timer_started_at: null, sort_order: incompleteCount }).eq('id', task.id)
+    }
   }
 
   async function handleDeleteTask(taskId: string) {
@@ -197,12 +229,13 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
       await supabase.from('tasks').update({ actual_seconds: stopped.actual_seconds, timer_started_at: null }).eq('id', runningTask.id)
     }
     const started: Task = { ...taskToStart, timer_started_at: new Date().toISOString() }
-    // Bump started task to top and renumber sort_orders
-    const reordered = [started, ...tasks.filter(t => t.id !== taskToStart.id)].map((t, i) => ({ ...t, sort_order: i }))
-    setTasks(reordered)
+    // Bump started task to top of incomplete group
+    const incompleteOthers = tasks.filter(t => !t.is_complete && t.id !== taskToStart.id)
+    const reorderedIncomplete = [started, ...incompleteOthers].map((t, i) => ({ ...t, sort_order: i }))
+    setTasks(prev => [...reorderedIncomplete, ...prev.filter(t => t.is_complete)])
     await supabase.from('tasks').update({ timer_started_at: started.timer_started_at, sort_order: 0 }).eq('id', taskToStart.id)
     await Promise.all(
-      tasks.filter(t => t.id !== taskToStart.id).map((t, i) =>
+      incompleteOthers.map((t, i) =>
         supabase.from('tasks').update({ sort_order: i + 1 }).eq('id', t.id)
       )
     )
@@ -274,7 +307,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
           </button>
         </div>
 
-        <ProgressBar estimatedMinutes={estimatedMinutes} actualSeconds={actualSeconds} isSleeping={isSleeping} />
+        <ProgressBar estimatedMinutes={estimatedMinutes} actualSeconds={actualSeconds} isSleeping={isSleeping} isRiham={isRiham} />
       </div>
 
       {/* Task list */}
@@ -286,23 +319,56 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
             </p>
           </div>
         ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-              {tasks.map(task => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  currentUser={currentUser}
-                  isReadOnly={isReadOnly}
-                  isSleeping={isSleeping}
-                  onUpdate={(updated) => setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))}
-                  onDelete={() => handleDeleteTask(task.id)}
-                  onEdit={() => setEditingTask(task)}
-                  onStartTimer={() => handleStartTimer(task)}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
+          <>
+            {/* Incomplete tasks */}
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={tasks.filter(t => !t.is_complete).map(t => t.id)} strategy={verticalListSortingStrategy}>
+                {tasks.filter(t => !t.is_complete).map(task => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    currentUser={currentUser}
+                    isReadOnly={isReadOnly}
+                    isSleeping={isSleeping}
+                    onUpdate={(updated) => setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))}
+                    onDelete={() => handleDeleteTask(task.id)}
+                    onEdit={() => setEditingTask(task)}
+                    onStartTimer={() => handleStartTimer(task)}
+                    onMarkDone={() => handleMarkDone(task)}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+
+            {/* Completed tasks */}
+            {tasks.some(t => t.is_complete) && (
+              <>
+                <div className={`flex items-center gap-2 pt-1 ${isSleeping ? 'text-slate-600' : 'text-stone-300'}`}>
+                  <div className="flex-1 h-px bg-current" />
+                  <span className={`text-xs font-medium ${isSleeping ? 'text-slate-500' : 'text-stone-400'}`}>Completed</span>
+                  <div className="flex-1 h-px bg-current" />
+                </div>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleCompletedDragEnd}>
+                  <SortableContext items={tasks.filter(t => t.is_complete).map(t => t.id)} strategy={verticalListSortingStrategy}>
+                    {tasks.filter(t => t.is_complete).map(task => (
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        currentUser={currentUser}
+                        isReadOnly={isReadOnly}
+                        isSleeping={isSleeping}
+                        onUpdate={(updated) => setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))}
+                        onDelete={() => handleDeleteTask(task.id)}
+                        onEdit={() => setEditingTask(task)}
+                        onStartTimer={() => handleStartTimer(task)}
+                        onMarkDone={() => handleMarkDone(task)}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
+              </>
+            )}
+          </>
         )}
       </div>
 
@@ -324,7 +390,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
         <AddTaskModal
           userId={panelUserId}
           date={selectedDate}
-          sortOrder={tasks.length}
+          sortOrder={tasks.filter(t => !t.is_complete).length}
           onClose={() => setShowAddModal(false)}
           onTaskAdded={() => setFetchKey(k => k + 1)}
         />
