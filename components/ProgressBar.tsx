@@ -1,6 +1,6 @@
 'use client'
 
-import { GOAL_MINUTES, minutesToDisplay, secondsToDisplay } from '@/lib/utils'
+import { GOAL_MINUTES, secondsToDisplay } from '@/lib/utils'
 
 interface Props {
   estimatedMinutes: number
@@ -34,14 +34,12 @@ export default function ProgressBar({ estimatedMinutes, actualSeconds, isSleepin
         />
       </div>
       <div className={`flex items-center justify-between text-xs ${isSleeping ? 'text-slate-400' : 'text-stone-500'}`}>
-        <span>
-          <span className={`font-medium tabular-nums ${isSleeping ? 'text-slate-200' : 'text-stone-700'}`}>{secondsToDisplay(actualSeconds)}</span>
-          {' actual · '}
-          <span>{minutesToDisplay(estimatedMinutes)}</span> est
+        <span className={`font-medium tabular-nums ${isSleeping ? 'text-slate-200' : 'text-stone-700'}`}>
+          {secondsToDisplay(actualSeconds)}
+          <span className={`font-normal ${isSleeping ? 'text-slate-400' : 'text-stone-400'}`}> / </span>
+          {secondsToDisplay(estimatedMinutes * 60)}
         </span>
-        <span className={goalReached ? 'text-emerald-400 font-semibold' : ''}>
-          {goalReached ? '7h reached!' : `${minutesToDisplay(GOAL_MINUTES)} goal`}
-        </span>
+        {goalReached && <span className="text-emerald-400 font-semibold">7h reached!</span>}
       </div>
     </div>
   )

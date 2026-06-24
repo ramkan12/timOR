@@ -4,11 +4,12 @@
 A private two-person couples accountability tracker for Riham and Omar. They don't talk to each other until both have completed 7 hours of focused work for the day. The app shows both people's task lists, live timers, progress toward 7 hours, and a sleep status toggle.
 
 ## Stack
-- **Next.js 14 (App Router)** — TypeScript, Tailwind CSS
+- **Next.js 16 (App Router)** — TypeScript, Tailwind CSS
 - **Supabase** — PostgreSQL + real-time WebSocket subscriptions
 - **Vercel** — deployment
 - **lucide-react** — icons
 - **date-fns** — date formatting
+- **@dnd-kit/sortable** — drag-and-drop task reordering
 
 ## Running locally
 ```bash
@@ -37,7 +38,7 @@ components/
   AddTaskModal.tsx   # create + edit modal (pass existingTask prop for edit mode)
   ProgressBar.tsx    # dual bar: estimated (lighter) vs actual (solid), ticks every second
   SleepToggle.tsx    # sleep switch + "last updated X ago" label
-  NoteWidget.tsx     # Instagram-style note bubble: one note per user, expires at 6am,
+  NoteWidget.tsx     # Instagram-style note bubble: one note per user, persists until deleted,
                      # owner can add/edit/delete inline, non-owner sees read-only
 
 lib/
