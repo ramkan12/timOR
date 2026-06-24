@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+
 import { Heart } from 'lucide-react'
 import { UserId } from '@/types'
 import { todayString } from '@/lib/utils'
@@ -11,10 +12,17 @@ function IdentityModal({ onSelect }: { onSelect: (user: UserId) => void }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-50">
       <div className="text-center space-y-8 px-6">
         <div className="space-y-2">
-          <div className="flex items-center justify-center gap-2 text-rose-400">
-            <Heart size={20} fill="currentColor" />
+          <div className="flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-stone-900 flex items-center justify-center">
+              <span className="text-rose-300 text-sm font-extrabold tracking-tight" style={{ fontFamily: 'serif' }}>OR</span>
+            </div>
           </div>
-          <h1 className="text-3xl font-bold text-stone-800">timOR</h1>
+          <h1 className="text-3xl font-bold text-stone-800 flex items-center justify-center gap-1">
+            tim
+            <div className="w-9 h-9 rounded-lg bg-stone-900 flex items-center justify-center">
+              <span className="text-rose-300 text-base font-extrabold" style={{ fontFamily: 'serif' }}>OR</span>
+            </div>
+          </h1>
           <p className="text-stone-500 text-sm max-w-xs mx-auto">
             Let's lock in together, loser :)
           </p>
@@ -70,11 +78,16 @@ export default function Home() {
       <header className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-b border-stone-200 bg-white">
         <button
           onClick={() => window.location.reload()}
-          className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-stone-100 active:bg-stone-200 transition-colors"
+          className="flex items-center gap-3 px-2 py-1 rounded-lg hover:bg-stone-100 active:bg-stone-200 transition-colors"
           title="Refresh"
         >
-          <Heart size={16} className="text-rose-400" fill="currentColor" />
-          <span className="font-bold text-stone-700 tracking-tight">timOR</span>
+          <Heart size={22} className="text-rose-400" fill="currentColor" />
+          <div className="flex items-center gap-0.5">
+            <span className="text-xl font-bold text-stone-700 tracking-tight">tim</span>
+            <div className="w-8 h-6 rounded-md bg-stone-900 flex items-center justify-center flex-shrink-0">
+              <span className="text-rose-300 text-base font-extrabold" style={{ fontFamily: 'serif' }}>OR</span>
+            </div>
+          </div>
         </button>
         {currentUser && (
           <span className="text-xs text-stone-500">
