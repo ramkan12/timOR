@@ -12,15 +12,13 @@ function IdentityModal({ onSelect }: { onSelect: (user: UserId) => void }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-50">
       <div className="text-center space-y-8 px-6">
         <div className="space-y-2">
-          <div className="flex items-center justify-center">
-            <div className="w-8 h-8 rounded-lg bg-stone-900 flex items-center justify-center">
-              <span className="text-rose-300 text-sm font-extrabold tracking-tight" style={{ fontFamily: 'serif' }}>OR</span>
-            </div>
+          <div className="flex items-center justify-center text-rose-400">
+            <Heart size={24} fill="currentColor" />
           </div>
           <h1 className="text-3xl font-bold text-stone-800 flex items-center justify-center gap-1">
             tim
-            <div className="w-9 h-9 rounded-lg bg-stone-900 flex items-center justify-center">
-              <span className="text-rose-300 text-base font-extrabold" style={{ fontFamily: 'serif' }}>OR</span>
+            <div className="w-12 h-10 rounded-lg bg-stone-900 flex items-center justify-center">
+              <span className="text-rose-300 text-2xl font-extrabold" style={{ fontFamily: 'serif' }}>OR</span>
             </div>
           </h1>
           <p className="text-stone-500 text-sm max-w-xs mx-auto">
@@ -33,17 +31,17 @@ function IdentityModal({ onSelect }: { onSelect: (user: UserId) => void }) {
           <div className="flex gap-3">
             <button
               onClick={() => onSelect('riham')}
-              className="flex-1 rounded-2xl bg-rose-50 border-2 border-rose-200 hover:border-rose-400 hover:bg-rose-100 transition-all py-5 px-6"
+              className="flex-1 rounded-2xl bg-rose-50 border-2 border-rose-200 hover:border-rose-400 hover:bg-rose-100 transition-all py-5 px-8"
             >
               <p className="font-bold text-rose-700 text-lg">Rihamie</p>
-              <p className="text-xs text-rose-400 mt-0.5">Software Engineer</p>
+              <p className="text-[10px] text-rose-400 mt-0.5 whitespace-nowrap">Software Engineer</p>
             </button>
             <button
               onClick={() => onSelect('omar')}
-              className="flex-1 rounded-2xl bg-sky-50 border-2 border-sky-200 hover:border-sky-400 hover:bg-sky-100 transition-all py-5 px-6"
+              className="flex-1 rounded-2xl bg-sky-50 border-2 border-sky-200 hover:border-sky-400 hover:bg-sky-100 transition-all py-5 px-8"
             >
               <p className="font-bold text-sky-700 text-lg">Omarie</p>
-              <p className="text-xs text-sky-400 mt-0.5">Robotics Engineer</p>
+              <p className="text-[10px] text-sky-400 mt-0.5 whitespace-nowrap">Robotics Engineer</p>
             </button>
           </div>
         </div>
