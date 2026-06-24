@@ -37,6 +37,8 @@ components/
   AddTaskModal.tsx   # create + edit modal (pass existingTask prop for edit mode)
   ProgressBar.tsx    # dual bar: estimated (lighter) vs actual (solid), ticks every second
   SleepToggle.tsx    # sleep switch + "last updated X ago" label
+  NoteWidget.tsx     # Instagram-style note bubble: one note per user, expires at 6am,
+                     # owner can add/edit/delete inline, non-owner sees read-only
 
 lib/
   supabase.ts        # single Supabase client instance
@@ -56,6 +58,8 @@ Two tables. RLS enabled with allow-all policies (URL is the secret).
 | id | text PK (`'riham'` or `'omar'`) |
 | sleep_status | boolean |
 | sleep_updated_at | timestamptz |
+| note | text (nullable) |
+| note_created_at | timestamptz (nullable) |
 
 **`tasks`**
 | column | type | notes |
@@ -69,6 +73,7 @@ Two tables. RLS enabled with allow-all policies (URL is the secret).
 | actual_seconds | integer | tracked time in **seconds** (not minutes!) |
 | timer_started_at | timestamptz | null when stopped |
 | is_complete | boolean | |
+| sort_order | integer | display order; default 0 |
 | created_at | timestamptz | auto |
 
 > ⚠️ The column is `actual_seconds` (stores seconds, NOT minutes). It was renamed from `actual_minutes` early in development.
@@ -82,7 +87,7 @@ alter publication supabase_realtime add table tasks;
 ## Key design decisions
 
 ### Identity
-No auth. On first visit a modal asks "Who are you?" — Riham or Omar. Choice saved to `localStorage` key `timor_user`. Either user can view both panels but can only interact with their own side.
+No auth. On first visit a modal asks "Who are you?" — Riham or Omar. Choice saved to `sessionStorage` key `timor_user` (session-only, not persisted across browser restarts). Either user can view both panels but can only interact with their own side.
 
 ### Time tracking
 - `actual_seconds` stores accumulated tracked time in **seconds**
@@ -105,6 +110,11 @@ This means:
 - Marking done gives full estimated-time credit even with no timer
 - Unmarking restores the real tracked time (no data loss)
 
+### Notes
+Instagram-style notes live in the `users` table (`note`, `note_created_at`). A note persists until the owner explicitly deletes it — there is no time-based expiry. Only the owner can write/edit/delete their note; both users can read each other's. The existing `users` real-time subscription propagates note changes with no extra wiring. Clicking the bubble opens an inline edit; the × button outside deletes it.
+
+Max note length is 80 characters (enforced in `NoteWidget`).
+
 ### Real-time strategy
 UserPanel uses Supabase `postgres_changes` subscriptions for both `tasks` and `users` tables. Additionally, a `fetchKey` state increments every 8 seconds to poll as a fallback (in case real-time lags or the subscription drops). Task adds/edits also bump `fetchKey` via `onTaskAdded` callback.
 
@@ -114,6 +124,8 @@ Both panels share a single `selectedDate` state in `page.tsx`. Navigating dates 
 ## Common tasks
 
 **Add a new field to tasks:** update `types/index.ts`, update the Supabase schema, update `AddTaskModal` insert/update, update `TaskCard` display.
+
+**Task reordering:** Tasks are sorted by `sort_order asc, created_at asc`. Drag handles (GripVertical) appear on TaskCards only for the owner on today's date. `@dnd-kit/sortable` handles drag-and-drop; on drop all tasks in the panel get their `sort_order` renumbered 0..n and persisted. Starting a timer also bumps that task to `sort_order = 0` (top).
 
 **Change the 7-hour goal:** edit `GOAL_MINUTES` in `lib/utils.ts`.
 

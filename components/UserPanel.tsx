@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { Plus, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
+import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core'
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { supabase } from '@/lib/supabase'
 import { Task, User, UserId } from '@/types'
 import { todayString, formatDateLabel } from '@/lib/utils'
@@ -10,6 +12,7 @@ import ProgressBar from './ProgressBar'
 import SleepToggle from './SleepToggle'
 import AddTaskModal from './AddTaskModal'
 import CalendarModal from './CalendarModal'
+import NoteWidget from './NoteWidget'
 
 interface Props {
   panelUserId: UserId
@@ -56,6 +59,11 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
   const [now, setNow] = useState(Date.now())
   const [fetchKey, setFetchKey] = useState(0)
 
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
   const isReadOnly = selectedDate < todayString()
   const isOwner = currentUser === panelUserId
   const isToday = selectedDate === todayString()
@@ -99,8 +107,9 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
       .select('*')
       .eq('user_id', panelUserId)
       .eq('date', selectedDate)
+      .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true })
-      .then(({ data }) => setTasks((data as Task[]) ?? []))
+      .then(({ data, error }) => { if (!error && data) setTasks(data as Task[]) })
   }, [panelUserId, selectedDate, fetchKey])
 
   // Fetch user row (sleep status)
@@ -154,6 +163,26 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
     setUser(prev => prev ? { ...prev, ...updated } : prev)
   }
 
+  async function handleNoteSave(text: string | null) {
+    const updated = { note: text, note_created_at: text ? new Date().toISOString() : null }
+    const prev = user
+    setUser(u => u ? { ...u, ...updated } : u)
+    const { error } = await supabase.from('users').update(updated).eq('id', panelUserId)
+    if (error) setUser(prev)
+  }
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = tasks.findIndex(t => t.id === active.id)
+    const newIndex = tasks.findIndex(t => t.id === over.id)
+    const reordered = arrayMove(tasks, oldIndex, newIndex).map((t, i) => ({ ...t, sort_order: i }))
+    setTasks(reordered)
+    await Promise.all(reordered.map((t, i) =>
+      supabase.from('tasks').update({ sort_order: i }).eq('id', t.id)
+    ))
+  }
+
   async function handleDeleteTask(taskId: string) {
     setTasks(prev => prev.filter(t => t.id !== taskId))
     await supabase.from('tasks').delete().eq('id', taskId)
@@ -168,8 +197,15 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
       await supabase.from('tasks').update({ actual_seconds: stopped.actual_seconds, timer_started_at: null }).eq('id', runningTask.id)
     }
     const started: Task = { ...taskToStart, timer_started_at: new Date().toISOString() }
-    setTasks(prev => prev.map(t => t.id === started.id ? started : t))
-    await supabase.from('tasks').update({ timer_started_at: started.timer_started_at }).eq('id', taskToStart.id)
+    // Bump started task to top and renumber sort_orders
+    const reordered = [started, ...tasks.filter(t => t.id !== taskToStart.id)].map((t, i) => ({ ...t, sort_order: i }))
+    setTasks(reordered)
+    await supabase.from('tasks').update({ timer_started_at: started.timer_started_at, sort_order: 0 }).eq('id', taskToStart.id)
+    await Promise.all(
+      tasks.filter(t => t.id !== taskToStart.id).map((t, i) =>
+        supabase.from('tasks').update({ sort_order: i + 1 }).eq('id', t.id)
+      )
+    )
   }
 
   const estimatedMinutes = tasks.reduce((sum, t) => sum + t.estimated_minutes, 0)
@@ -205,6 +241,11 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
             <SleepToggle user={user} currentUser={currentUser} onToggle={handleSleepToggle} />
           )}
         </div>
+
+        {/* Note widget */}
+        {user && (
+          <NoteWidget user={user} isOwner={isOwner} isSleeping={isSleeping} onSave={handleNoteSave} />
+        )}
 
         {/* Date navigation */}
         <div className="flex items-center justify-between">
@@ -245,19 +286,23 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
             </p>
           </div>
         ) : (
-          tasks.map(task => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              currentUser={currentUser}
-              isReadOnly={isReadOnly}
-              isSleeping={isSleeping}
-              onUpdate={(updated) => setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))}
-              onDelete={() => handleDeleteTask(task.id)}
-              onEdit={() => setEditingTask(task)}
-              onStartTimer={() => handleStartTimer(task)}
-            />
-          ))
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+              {tasks.map(task => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  currentUser={currentUser}
+                  isReadOnly={isReadOnly}
+                  isSleeping={isSleeping}
+                  onUpdate={(updated) => setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))}
+                  onDelete={() => handleDeleteTask(task.id)}
+                  onEdit={() => setEditingTask(task)}
+                  onStartTimer={() => handleStartTimer(task)}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
         )}
       </div>
 
@@ -279,6 +324,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
         <AddTaskModal
           userId={panelUserId}
           date={selectedDate}
+          sortOrder={tasks.length}
           onClose={() => setShowAddModal(false)}
           onTaskAdded={() => setFetchKey(k => k + 1)}
         />

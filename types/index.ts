@@ -4,6 +4,8 @@ export interface User {
   id: UserId
   sleep_status: boolean
   sleep_updated_at: string
+  note: string | null
+  note_created_at: string | null
 }
 
 export interface Task {
@@ -16,5 +18,6 @@ export interface Task {
   actual_seconds: number
   timer_started_at: string | null
   is_complete: boolean
+  sort_order: number
   created_at: string
 }

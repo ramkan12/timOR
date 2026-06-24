@@ -8,6 +8,7 @@ import { Task, UserId } from '@/types'
 interface Props {
   userId: UserId
   date: string
+  sortOrder?: number
   onClose: () => void
   onTaskAdded?: () => void
   existingTask?: Task
@@ -16,7 +17,7 @@ interface Props {
 const HOUR_OPTIONS = Array.from({ length: 8 }, (_, i) => i)
 const MINUTE_OPTIONS = [0, 15, 30, 45]
 
-export default function AddTaskModal({ userId, date, onClose, onTaskAdded, existingTask }: Props) {
+export default function AddTaskModal({ userId, date, sortOrder = 0, onClose, onTaskAdded, existingTask }: Props) {
   const isEditing = !!existingTask
 
   const [title, setTitle] = useState(existingTask?.title ?? '')
@@ -50,6 +51,7 @@ export default function AddTaskModal({ userId, date, onClose, onTaskAdded, exist
           actual_seconds: 0,
           timer_started_at: null,
           is_complete: false,
+          sort_order: sortOrder,
         })
 
     if (dbError) {

@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Play, Square, CheckCircle2, Circle, Clock, Pencil, Trash2 } from 'lucide-react'
+import { Play, Square, CheckCircle2, Circle, Clock, Pencil, Trash2, GripVertical } from 'lucide-react'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { Task, UserId } from '@/types'
 import { minutesToDisplay, secondsToDisplay, getElapsedSeconds } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
@@ -20,6 +22,13 @@ interface Props {
 export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, onUpdate, onDelete, onEdit, onStartTimer }: Props) {
   const isOwner = currentUser === task.user_id
   const canInteract = isOwner && !isReadOnly
+
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id })
+  const dragStyle: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  }
 
   const [elapsedSeconds, setElapsedSeconds] = useState(() => getElapsedSeconds(task.timer_started_at))
   const [showMenu, setShowMenu] = useState(false)
@@ -97,8 +106,19 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
       : 'border-stone-200 bg-white shadow-sm hover:shadow-lg hover:border-stone-400 hover:bg-stone-50 hover:-translate-y-0.5 cursor-pointer'
 
   return (
-    <div className={`rounded-xl border p-4 transition-all duration-150 ${cardClass}`}>
+    <div ref={setNodeRef} style={dragStyle} className={`rounded-xl border p-4 transition-all duration-150 ${cardClass}`}>
       <div className="flex items-start gap-3">
+        {/* Drag handle — only for owner on current date */}
+        {canInteract && (
+          <button
+            {...listeners}
+            {...attributes}
+            className={`flex-shrink-0 mt-0.5 cursor-grab active:cursor-grabbing touch-none ${isSleeping ? 'text-slate-600 hover:text-slate-400' : 'text-stone-300 hover:text-stone-400'}`}
+            tabIndex={-1}
+          >
+            <GripVertical size={14} />
+          </button>
+        )}
 
         {/* Circle / action menu */}
         <div className="relative mt-0.5 flex-shrink-0" ref={menuRef}>

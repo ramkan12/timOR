@@ -23,12 +23,6 @@ export function getElapsedSeconds(timerStartedAt: string | null): number {
   return Math.floor((Date.now() - new Date(timerStartedAt).getTime()) / 1000)
 }
 
-export function getActualMinutes(task: { actual_minutes: number; timer_started_at: string | null }, now: number): number {
-  const elapsed = task.timer_started_at
-    ? Math.floor((now - new Date(task.timer_started_at).getTime()) / 60000)
-    : 0
-  return task.actual_minutes + elapsed
-}
 
 export function formatSleepTimestamp(timestamp: string): string {
   return formatDistanceToNow(new Date(timestamp), { addSuffix: true })

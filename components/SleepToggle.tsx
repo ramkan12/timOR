@@ -40,7 +40,7 @@ export default function SleepToggle({ user, currentUser, onToggle }: Props) {
         />
       </button>
       <span className="text-xs text-stone-400 hidden sm:inline">
-        {user.sleep_status ? 'Sleeping' : 'Awake'}
+        {user.sleep_status ? 'Sleeping' : 'Awoke'}
         {timeLabel ? ` · ${timeLabel}` : ''}
       </span>
     </div>
