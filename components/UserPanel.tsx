@@ -24,6 +24,29 @@ function addDays(dateStr: string, days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
+const STARS_STYLE: React.CSSProperties = {
+  backgroundImage: [
+    'radial-gradient(1px 1px at 12% 8%, rgba(255,255,255,0.9) 0%, transparent 100%)',
+    'radial-gradient(1.5px 1.5px at 28% 5%, rgba(255,255,255,0.7) 0%, transparent 100%)',
+    'radial-gradient(1px 1px at 45% 12%, rgba(255,255,255,0.8) 0%, transparent 100%)',
+    'radial-gradient(2px 2px at 67% 7%, rgba(255,255,255,0.6) 0%, transparent 100%)',
+    'radial-gradient(1px 1px at 82% 15%, rgba(255,255,255,0.9) 0%, transparent 100%)',
+    'radial-gradient(1px 1px at 8% 25%, rgba(255,255,255,0.5) 0%, transparent 100%)',
+    'radial-gradient(1.5px 1.5px at 55% 20%, rgba(255,255,255,0.7) 0%, transparent 100%)',
+    'radial-gradient(1px 1px at 91% 30%, rgba(255,255,255,0.6) 0%, transparent 100%)',
+    'radial-gradient(2px 2px at 35% 35%, rgba(255,255,255,0.4) 0%, transparent 100%)',
+    'radial-gradient(1px 1px at 73% 28%, rgba(255,255,255,0.8) 0%, transparent 100%)',
+    'radial-gradient(1px 1px at 20% 45%, rgba(255,255,255,0.5) 0%, transparent 100%)',
+    'radial-gradient(1.5px 1.5px at 88% 50%, rgba(255,255,255,0.6) 0%, transparent 100%)',
+    'radial-gradient(1px 1px at 50% 55%, rgba(255,255,255,0.4) 0%, transparent 100%)',
+    'radial-gradient(2px 2px at 5% 60%, rgba(255,255,255,0.7) 0%, transparent 100%)',
+    'radial-gradient(1px 1px at 95% 18%, rgba(255,255,255,0.5) 0%, transparent 100%)',
+    'radial-gradient(1px 1px at 62% 42%, rgba(255,255,255,0.6) 0%, transparent 100%)',
+    'radial-gradient(1.5px 1.5px at 15% 70%, rgba(255,255,255,0.4) 0%, transparent 100%)',
+    'radial-gradient(1px 1px at 78% 65%, rgba(255,255,255,0.5) 0%, transparent 100%)',
+  ].join(', '),
+}
+
 export default function UserPanel({ panelUserId, currentUser, selectedDate, onDateChange }: Props) {
   const [tasks, setTasks] = useState<Task[]>([])
   const [user, setUser] = useState<User | null>(null)
@@ -36,12 +59,26 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
   const isReadOnly = selectedDate < todayString()
   const isOwner = currentUser === panelUserId
   const isToday = selectedDate === todayString()
+  const isSleeping = user?.sleep_status ?? false
+  const isRiham = panelUserId === 'riham'
 
-  const displayName = panelUserId === 'riham' ? 'Rihamie' : 'Omarie'
-  const accentBg = panelUserId === 'riham' ? 'from-rose-50' : 'from-sky-50'
-  const addBtnClass = panelUserId === 'riham'
-    ? 'bg-rose-500 hover:bg-rose-600 text-white'
-    : 'bg-sky-500 hover:bg-sky-600 text-white'
+  const displayName = isRiham ? 'Rihamie' : 'Omarie'
+
+  const panelBg = isSleeping
+    ? isRiham
+      ? 'from-slate-950 via-indigo-950 to-rose-950'
+      : 'from-slate-950 via-indigo-950 to-sky-950'
+    : isRiham
+      ? 'from-rose-50 to-white'
+      : 'from-sky-50 to-white'
+
+  const addBtnClass = isSleeping
+    ? isRiham
+      ? 'bg-rose-800 hover:bg-rose-700 text-white'
+      : 'bg-sky-800 hover:bg-sky-700 text-white'
+    : isRiham
+      ? 'bg-rose-500 hover:bg-rose-600 text-white'
+      : 'bg-sky-500 hover:bg-sky-600 text-white'
 
   // Tick every second for live progress bar + task timers
   useEffect(() => {
@@ -125,13 +162,11 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
   async function handleStartTimer(taskToStart: Task) {
     const runningTask = tasks.find(t => t.id !== taskToStart.id && !!t.timer_started_at)
     if (runningTask) {
-      // Stop the other running timer and bank its elapsed seconds
       const elapsed = Math.floor((Date.now() - new Date(runningTask.timer_started_at!).getTime()) / 1000)
       const stopped: Task = { ...runningTask, actual_seconds: runningTask.actual_seconds + elapsed, timer_started_at: null }
       setTasks(prev => prev.map(t => t.id === stopped.id ? stopped : t))
       await supabase.from('tasks').update({ actual_seconds: stopped.actual_seconds, timer_started_at: null }).eq('id', runningTask.id)
     }
-    // Start the new timer
     const started: Task = { ...taskToStart, timer_started_at: new Date().toISOString() }
     setTasks(prev => prev.map(t => t.id === started.id ? started : t))
     await supabase.from('tasks').update({ timer_started_at: started.timer_started_at }).eq('id', taskToStart.id)
@@ -139,9 +174,6 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
 
   const estimatedMinutes = tasks.reduce((sum, t) => sum + t.estimated_minutes, 0)
 
-  // Compute actual seconds for the progress bar:
-  // - Completed tasks: credit whichever is larger, tracked time or estimated time
-  // - Incomplete tasks: just actual tracked + any live elapsed from a running timer
   const actualSeconds = tasks.reduce((sum, t) => {
     if (t.is_complete) {
       return sum + Math.max(t.actual_seconds, t.estimated_minutes * 60)
@@ -153,14 +185,20 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
   }, 0)
 
   return (
-    <div className={`flex flex-col md:flex-1 md:min-h-0 bg-gradient-to-b ${accentBg} to-white`}>
+    <div className={`relative flex flex-col md:flex-1 md:min-h-0 bg-gradient-to-b ${panelBg} transition-colors duration-700`}>
+
+      {/* Stars overlay (sleep mode only) */}
+      {isSleeping && (
+        <div className="absolute inset-0 pointer-events-none z-0" style={STARS_STYLE} />
+      )}
+
       {/* Panel header */}
-      <div className="px-5 pt-5 pb-4 border-b border-stone-100 space-y-3">
+      <div className={`relative z-10 px-5 pt-5 pb-4 border-b space-y-3 ${isSleeping ? 'border-slate-700/50' : 'border-stone-100'}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <h2 className="text-lg font-bold text-stone-800">{displayName}</h2>
+            <h2 className={`text-lg font-bold ${isSleeping ? 'text-slate-100' : 'text-stone-800'}`}>{displayName}</h2>
             {isOwner && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 font-medium">you</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isSleeping ? 'bg-slate-700 text-slate-300' : 'bg-stone-100 text-stone-500'}`}>you</span>
             )}
           </div>
           {user && (
@@ -172,15 +210,15 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
         <div className="flex items-center justify-between">
           <button
             onClick={() => onDateChange(addDays(selectedDate, -1))}
-            className="p-1.5 rounded-lg text-stone-400 hover:text-stone-800 hover:bg-stone-200 active:bg-stone-300 transition-colors"
+            className={`p-1.5 rounded-lg transition-colors ${isSleeping ? 'text-slate-400 hover:text-slate-100 hover:bg-slate-700 active:bg-slate-600' : 'text-stone-400 hover:text-stone-800 hover:bg-stone-200 active:bg-stone-300'}`}
           >
             <ChevronLeft size={16} />
           </button>
           <div className="flex items-center gap-1.5">
-            <span className="text-sm font-medium text-stone-600">{formatDateLabel(selectedDate)}</span>
+            <span className={`text-sm font-medium ${isSleeping ? 'text-slate-300' : 'text-stone-600'}`}>{formatDateLabel(selectedDate)}</span>
             <button
               onClick={() => setShowCalendar(true)}
-              className="p-1 rounded-md text-stone-400 hover:text-stone-700 hover:bg-stone-200 transition-colors"
+              className={`p-1 rounded-md transition-colors ${isSleeping ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-stone-400 hover:text-stone-700 hover:bg-stone-200'}`}
               title="Open calendar"
             >
               <Calendar size={13} />
@@ -189,20 +227,20 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
           <button
             onClick={() => onDateChange(addDays(selectedDate, 1))}
             disabled={isToday}
-            className="p-1.5 rounded-lg text-stone-400 hover:text-stone-800 hover:bg-stone-200 active:bg-stone-300 transition-colors disabled:opacity-30 disabled:cursor-default"
+            className={`p-1.5 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-default ${isSleeping ? 'text-slate-400 hover:text-slate-100 hover:bg-slate-700 active:bg-slate-600' : 'text-stone-400 hover:text-stone-800 hover:bg-stone-200 active:bg-stone-300'}`}
           >
             <ChevronRight size={16} />
           </button>
         </div>
 
-        <ProgressBar estimatedMinutes={estimatedMinutes} actualSeconds={actualSeconds} />
+        <ProgressBar estimatedMinutes={estimatedMinutes} actualSeconds={actualSeconds} isSleeping={isSleeping} />
       </div>
 
       {/* Task list */}
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2.5">
+      <div className="relative z-10 flex-1 overflow-y-auto px-5 py-4 space-y-2.5">
         {tasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <p className="text-stone-400 text-sm">
+            <p className={`text-sm ${isSleeping ? 'text-slate-400' : 'text-stone-400'}`}>
               {isReadOnly ? 'No tasks recorded for this day.' : 'No tasks yet — add one to get started!'}
             </p>
           </div>
@@ -213,6 +251,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
               task={task}
               currentUser={currentUser}
               isReadOnly={isReadOnly}
+              isSleeping={isSleeping}
               onUpdate={(updated) => setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))}
               onDelete={() => handleDeleteTask(task.id)}
               onEdit={() => setEditingTask(task)}
@@ -224,7 +263,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
 
       {/* Add task button */}
       {isOwner && !isReadOnly && (
-        <div className="px-5 pb-5 pt-2">
+        <div className="relative z-10 px-5 pb-5 pt-2">
           <button
             onClick={() => setShowAddModal(true)}
             className={`w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-colors ${addBtnClass}`}

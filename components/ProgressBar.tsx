@@ -5,11 +5,12 @@ import { GOAL_MINUTES, minutesToDisplay, secondsToDisplay } from '@/lib/utils'
 interface Props {
   estimatedMinutes: number
   actualSeconds: number
+  isSleeping?: boolean
 }
 
 const GOAL_SECONDS = GOAL_MINUTES * 60
 
-export default function ProgressBar({ estimatedMinutes, actualSeconds }: Props) {
+export default function ProgressBar({ estimatedMinutes, actualSeconds, isSleeping }: Props) {
   const actualPct = Math.min((actualSeconds / GOAL_SECONDS) * 100, 100)
   const estimatedPct = Math.min((estimatedMinutes / GOAL_MINUTES) * 100, 100)
   const goalReached = actualSeconds >= GOAL_SECONDS
@@ -22,9 +23,9 @@ export default function ProgressBar({ estimatedMinutes, actualSeconds }: Props) 
 
   return (
     <div className="space-y-1.5">
-      <div className="relative h-3 w-full rounded-full bg-stone-200 overflow-hidden">
+      <div className={`relative h-3 w-full rounded-full overflow-hidden ${isSleeping ? 'bg-slate-700' : 'bg-stone-200'}`}>
         <div
-          className="absolute inset-y-0 left-0 rounded-full bg-stone-300 transition-all duration-500"
+          className={`absolute inset-y-0 left-0 rounded-full transition-all duration-500 ${isSleeping ? 'bg-slate-600' : 'bg-stone-300'}`}
           style={{ width: `${estimatedPct}%` }}
         />
         <div
@@ -32,13 +33,13 @@ export default function ProgressBar({ estimatedMinutes, actualSeconds }: Props) 
           style={{ width: `${actualPct}%` }}
         />
       </div>
-      <div className="flex items-center justify-between text-xs text-stone-500">
+      <div className={`flex items-center justify-between text-xs ${isSleeping ? 'text-slate-400' : 'text-stone-500'}`}>
         <span>
-          <span className="font-medium text-stone-700 tabular-nums">{secondsToDisplay(actualSeconds)}</span>
+          <span className={`font-medium tabular-nums ${isSleeping ? 'text-slate-200' : 'text-stone-700'}`}>{secondsToDisplay(actualSeconds)}</span>
           {' actual · '}
           <span>{minutesToDisplay(estimatedMinutes)}</span> est
         </span>
-        <span className={goalReached ? 'text-emerald-600 font-semibold' : ''}>
+        <span className={goalReached ? 'text-emerald-400 font-semibold' : ''}>
           {goalReached ? '7h reached!' : `${minutesToDisplay(GOAL_MINUTES)} goal`}
         </span>
       </div>
