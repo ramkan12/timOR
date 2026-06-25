@@ -8,6 +8,15 @@ export interface User {
   note_created_at: string | null
 }
 
+export interface SpeccialsEntry {
+  id: string
+  user_id: UserId
+  date: string
+  category_index: number
+  content: string
+  created_at: string
+}
+
 export interface Task {
   id: string
   user_id: UserId

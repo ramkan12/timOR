@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, Calendar, Sparkles } from 'lucide-react'
 import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { supabase } from '@/lib/supabase'
@@ -13,6 +13,7 @@ import SleepToggle from './SleepToggle'
 import AddTaskModal from './AddTaskModal'
 import CalendarModal from './CalendarModal'
 import NoteWidget from './NoteWidget'
+import SpeccialsModal from './SpeccialsModal'
 
 interface Props {
   panelUserId: UserId
@@ -56,6 +57,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [showCalendar, setShowCalendar] = useState(false)
+  const [showSpeccials, setShowSpeccials] = useState(false)
   const [now, setNow] = useState(Date.now())
   const [fetchKey, setFetchKey] = useState(0)
 
@@ -94,9 +96,9 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
     return () => clearInterval(t)
   }, [])
 
-  // Poll every 8 seconds as a fallback in case real-time subscription misses an update
+  // Poll every 3 seconds as a fallback in case real-time subscription misses an update
   useEffect(() => {
-    const t = setInterval(() => setFetchKey(k => k + 1), 8000)
+    const t = setInterval(() => setFetchKey(k => k + 1), 3000)
     return () => clearInterval(t)
   }, [])
 
@@ -113,7 +115,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
       .then(({ data, error }) => { if (!error && data) setTasks(data as Task[]) })
   }, [panelUserId, selectedDate, fetchKey])
 
-  // Fetch user row (sleep status)
+  // Fetch user row (sleep status, note)
   useEffect(() => {
     supabase
       .from('users')
@@ -121,7 +123,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
       .eq('id', panelUserId)
       .single()
       .then(({ data }) => { if (data) setUser(data as User) })
-  }, [panelUserId])
+  }, [panelUserId, fetchKey])
 
   // Real-time: tasks
   useEffect(() => {
@@ -270,9 +272,18 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isSleeping ? 'bg-slate-700 text-slate-300' : 'bg-stone-100 text-stone-500'}`}>you</span>
             )}
           </div>
-          {user && (
-            <SleepToggle user={user} currentUser={currentUser} onToggle={handleSleepToggle} />
-          )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSpeccials(true)}
+              title="SPECCIALS"
+              className={`p-1.5 rounded-lg transition-colors ${isSleeping ? 'text-slate-500 hover:text-slate-300 hover:bg-slate-700' : 'text-stone-400 hover:text-stone-600 hover:bg-stone-100'}`}
+            >
+              <Sparkles size={15} />
+            </button>
+            {user && (
+              <SleepToggle user={user} currentUser={currentUser} onToggle={handleSleepToggle} />
+            )}
+          </div>
         </div>
 
         {/* Note widget */}
@@ -402,6 +413,17 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
           selectedDate={selectedDate}
           onSelectDate={(date) => { onDateChange(date); setShowCalendar(false) }}
           onClose={() => setShowCalendar(false)}
+        />
+      )}
+
+      {/* SPECCIALS modal */}
+      {showSpeccials && (
+        <SpeccialsModal
+          panelUserId={panelUserId}
+          currentUser={currentUser}
+          isRiham={isRiham}
+          isSleeping={isSleeping}
+          onClose={() => setShowSpeccials(false)}
         />
       )}
 

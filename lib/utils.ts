@@ -34,6 +34,24 @@ export function todayString(): string {
   return format(now, 'yyyy-MM-dd')
 }
 
+export function getMondayOfWeek(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00')
+  const day = d.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  d.setDate(d.getDate() + diff)
+  return d.toISOString().slice(0, 10)
+}
+
+export function getWeekDays(mondayStr: string): string[] {
+  const days: string[] = []
+  const d = new Date(mondayStr + 'T00:00:00')
+  for (let i = 0; i < 7; i++) {
+    days.push(d.toISOString().slice(0, 10))
+    d.setDate(d.getDate() + 1)
+  }
+  return days
+}
+
 export function formatDateLabel(dateStr: string): string {
   const today = todayString()
   const d = new Date(today + 'T00:00:00')
