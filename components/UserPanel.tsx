@@ -6,7 +6,7 @@ import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter,
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { supabase } from '@/lib/supabase'
 import { Task, User, UserId } from '@/types'
-import { todayString, formatDateLabel, getElapsedSeconds } from '@/lib/utils'
+import { todayString, formatDateLabel, getElapsedSeconds, endOfDayMs } from '@/lib/utils'
 import TaskCard from './TaskCard'
 import ProgressBar from './ProgressBar'
 import SleepToggle from './SleepToggle'
@@ -102,6 +102,29 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
     return () => clearInterval(t)
   }, [])
 
+  // On mount: auto-stop any timers that ran past their day boundary (6am of the following day)
+  useEffect(() => {
+    const today = todayString()
+    supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', panelUserId)
+      .not('timer_started_at', 'is', null)
+      .lt('date', today)
+      .then(async ({ data }) => {
+        if (!data || data.length === 0) return
+        await Promise.all((data as Task[]).map(t => {
+          const cap = endOfDayMs(t.date)
+          const elapsed = Math.max(0, Math.floor((Math.min(Date.now(), cap) - new Date(t.timer_started_at!).getTime()) / 1000))
+          return supabase.from('tasks').update({
+            timer_started_at: null,
+            actual_seconds: t.actual_seconds + elapsed,
+          }).eq('id', t.id)
+        }))
+        setFetchKey(k => k + 1)
+      })
+  }, [panelUserId])
+
   // Fetch tasks
   useEffect(() => {
     supabase
@@ -179,6 +202,14 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
     setUser(u => u ? { ...u, ...updated } : u)
     const { error } = await supabase.from('users').update(updated).eq('id', panelUserId)
     if (error) setUser(prev)
+  }
+
+  async function handleStopStale(task: Task) {
+    const cap = endOfDayMs(task.date)
+    const elapsed = Math.max(0, Math.floor((Math.min(Date.now(), cap) - new Date(task.timer_started_at!).getTime()) / 1000))
+    const updated: Task = { ...task, timer_started_at: null, actual_seconds: task.actual_seconds + elapsed }
+    setTasks(prev => prev.map(t => t.id === task.id ? updated : t))
+    await supabase.from('tasks').update({ timer_started_at: null, actual_seconds: updated.actual_seconds }).eq('id', task.id)
   }
 
   async function handleDragEnd(event: DragEndEvent) {
@@ -353,6 +384,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
                     onEdit={() => setEditingTask(task)}
                     onStartTimer={() => handleStartTimer(task)}
                     onMarkDone={() => handleMarkDone(task)}
+                    onStopStale={() => handleStopStale(task)}
                   />
                 ))}
               </SortableContext>
@@ -380,6 +412,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
                         onEdit={() => setEditingTask(task)}
                         onStartTimer={() => handleStartTimer(task)}
                         onMarkDone={() => handleMarkDone(task)}
+                        onStopStale={() => handleStopStale(task)}
                       />
                     ))}
                   </SortableContext>

@@ -18,9 +18,10 @@ interface Props {
   onEdit: () => void
   onStartTimer: () => void
   onMarkDone: () => void
+  onStopStale: () => void
 }
 
-export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, onUpdate, onDelete, onEdit, onStartTimer, onMarkDone }: Props) {
+export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, onUpdate, onDelete, onEdit, onStartTimer, onMarkDone, onStopStale }: Props) {
   const isOwner = currentUser === task.user_id
   const canInteract = isOwner && !isReadOnly
 
@@ -133,6 +134,17 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
             )}
           </div>
         </div>
+
+        {/* Emergency stop for a timer that ran past midnight into a read-only day */}
+        {isOwner && isReadOnly && isRunning && (
+          <button
+            onClick={onStopStale}
+            className="flex-shrink-0 rounded-lg p-1.5 bg-red-100 text-red-500 hover:bg-red-200 active:bg-red-300 transition-colors"
+            title="Stop stale timer"
+          >
+            <Square size={14} />
+          </button>
+        )}
 
         {/* Right column: timer on top, action icon below */}
         {canInteract && (

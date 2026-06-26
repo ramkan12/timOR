@@ -23,6 +23,13 @@ export function getElapsedSeconds(timerStartedAt: string | null): number {
   return Math.floor((Date.now() - new Date(timerStartedAt).getTime()) / 1000)
 }
 
+export function endOfDayMs(dateStr: string): number {
+  const d = new Date(dateStr + 'T00:00:00')
+  d.setDate(d.getDate() + 1)
+  d.setHours(6, 0, 0, 0)
+  return d.getTime()
+}
+
 
 export function formatSleepTimestamp(timestamp: string): string {
   return formatDistanceToNow(new Date(timestamp), { addSuffix: true })
