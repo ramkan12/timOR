@@ -6,6 +6,8 @@ export interface User {
   sleep_updated_at: string
   note: string | null
   note_created_at: string | null
+  note_reaction: string | null
+  note_reaction_by: string | null
 }
 
 export interface SpeccialsEntry {

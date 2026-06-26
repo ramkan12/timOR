@@ -160,6 +160,13 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
     return () => { supabase.removeChannel(channel) }
   }, [panelUserId])
 
+  async function handleNoteReact(emoji: string | null) {
+    if (!currentUser || currentUser === panelUserId) return
+    const updated = { note_reaction: emoji, note_reaction_by: emoji ? currentUser : null }
+    setUser(u => u ? { ...u, ...updated } : u)
+    await supabase.from('users').update(updated).eq('id', panelUserId)
+  }
+
   async function handleSleepToggle(sleeping: boolean) {
     const updated = { sleep_status: sleeping, sleep_updated_at: new Date().toISOString() }
     await supabase.from('users').update(updated).eq('id', panelUserId)
@@ -288,7 +295,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
 
         {/* Note widget */}
         {user && (
-          <NoteWidget user={user} isOwner={isOwner} isSleeping={isSleeping} onSave={handleNoteSave} />
+          <NoteWidget user={user} isOwner={isOwner} isSleeping={isSleeping} onSave={handleNoteSave} onReact={handleNoteReact} />
         )}
 
         {/* Date navigation */}
