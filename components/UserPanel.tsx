@@ -58,6 +58,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [showCalendar, setShowCalendar] = useState(false)
   const [showSpeccials, setShowSpeccials] = useState(false)
+  const [movingTask, setMovingTask] = useState<Task | null>(null)
   const [now, setNow] = useState(Date.now())
   const [fetchKey, setFetchKey] = useState(0)
 
@@ -217,6 +218,20 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
     await supabase.from('tasks').update({ timer_started_at: null, actual_seconds: updated.actual_seconds }).eq('id', task.id)
   }
 
+  async function handleMoveTaskToDate(task: Task, dateStr: string) {
+    setMovingTask(null)
+    const elapsed = task.timer_started_at
+      ? Math.floor((Date.now() - new Date(task.timer_started_at).getTime()) / 1000)
+      : 0
+    setTasks(prev => prev.filter(t => t.id !== task.id))
+    await supabase.from('tasks').update({
+      date: dateStr,
+      sort_order: 0,
+      timer_started_at: null,
+      actual_seconds: task.actual_seconds + elapsed,
+    }).eq('id', task.id)
+  }
+
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     if (!over || active.id === over.id) return
@@ -354,7 +369,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
           </div>
           <button
             onClick={() => onDateChange(addDays(selectedDate, 1))}
-            disabled={isToday}
+            disabled={false}
             className={`p-1.5 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-default ${isSleeping ? 'text-slate-400 hover:text-slate-100 hover:bg-slate-700 active:bg-slate-600' : 'text-stone-400 hover:text-stone-800 hover:bg-stone-200 active:bg-stone-300'}`}
           >
             <ChevronRight size={16} />
@@ -390,6 +405,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
                     onStartTimer={() => handleStartTimer(task)}
                     onMarkDone={() => handleMarkDone(task)}
                     onStopStale={() => handleStopStale(task)}
+                    onMoveTask={() => setMovingTask(task)}
                   />
                 ))}
               </SortableContext>
@@ -418,6 +434,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
                         onStartTimer={() => handleStartTimer(task)}
                         onMarkDone={() => handleMarkDone(task)}
                         onStopStale={() => handleStopStale(task)}
+                    onMoveTask={() => setMovingTask(task)}
                       />
                     ))}
                   </SortableContext>
@@ -458,6 +475,15 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
           selectedDate={selectedDate}
           onSelectDate={(date) => { onDateChange(date); setShowCalendar(false) }}
           onClose={() => setShowCalendar(false)}
+        />
+      )}
+
+      {/* Move task date picker */}
+      {movingTask && (
+        <CalendarModal
+          selectedDate={selectedDate}
+          onSelectDate={(dateStr) => handleMoveTaskToDate(movingTask, dateStr)}
+          onClose={() => setMovingTask(null)}
         />
       )}
 

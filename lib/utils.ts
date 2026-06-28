@@ -64,7 +64,11 @@ export function formatDateLabel(dateStr: string): string {
   const d = new Date(today + 'T00:00:00')
   d.setDate(d.getDate() - 1)
   const yesterday = format(d, 'yyyy-MM-dd')
+  const t = new Date(today + 'T00:00:00')
+  t.setDate(t.getDate() + 1)
+  const tomorrow = format(t, 'yyyy-MM-dd')
   if (dateStr === today) return 'Today'
   if (dateStr === yesterday) return 'Yesterday'
+  if (dateStr === tomorrow) return 'Tomorrow'
   return format(new Date(dateStr + 'T00:00:00'), 'MMM d, yyyy')
 }

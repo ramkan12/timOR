@@ -65,16 +65,11 @@ export default function CalendarModal({ selectedDate, onSelectDate, onClose }: P
   }
 
   function nextMonth() {
-    const todayYear = parseInt(today.slice(0, 4))
-    const todayMonth = parseInt(today.slice(5, 7)) - 1
-    if (viewYear === todayYear && viewMonth === todayMonth) return
     if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0) }
     else setViewMonth(m => m + 1)
   }
 
-  const todayYear = parseInt(today.slice(0, 4))
-  const todayMonth = parseInt(today.slice(5, 7)) - 1
-  const canGoNext = !(viewYear === todayYear && viewMonth === todayMonth)
+  const canGoNext = true
 
   const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay()
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate()
@@ -152,13 +147,12 @@ export default function CalendarModal({ selectedDate, onSelectDate, onClose }: P
               return (
                 <button
                   key={dateStr}
-                  disabled={isFuture}
                   onClick={() => { onSelectDate(dateStr); onClose() }}
                   className={`flex flex-col items-center py-1.5 rounded-lg transition-colors ${
-                    isFuture
-                      ? 'opacity-25 cursor-default'
-                      : isSelected
+                    isSelected
                       ? 'bg-stone-800 text-white'
+                      : isFuture
+                      ? 'text-stone-400 hover:bg-stone-50'
                       : 'hover:bg-stone-100 text-stone-700'
                   }`}
                 >

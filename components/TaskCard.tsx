@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Play, Square, CheckCircle2, Clock, Pencil, Trash2, GripVertical } from 'lucide-react'
+import { Play, Square, CheckCircle2, Clock, Pencil, ArrowRight, Trash2, GripVertical } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Task, UserId } from '@/types'
@@ -19,9 +19,10 @@ interface Props {
   onStartTimer: () => void
   onMarkDone: () => void
   onStopStale: () => void
+  onMoveTask: () => void
 }
 
-export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, onUpdate, onDelete, onEdit, onStartTimer, onMarkDone, onStopStale }: Props) {
+export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, onUpdate, onDelete, onEdit, onStartTimer, onMarkDone, onStopStale, onMoveTask }: Props) {
   const isOwner = currentUser === task.user_id
   const canInteract = isOwner && !isReadOnly
 
@@ -95,7 +96,7 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
       : 'border-stone-200 bg-white shadow-sm hover:shadow-lg hover:border-stone-400 hover:bg-stone-50 hover:-translate-y-0.5 cursor-pointer'
 
   return (
-    <div ref={setNodeRef} style={dragStyle} className={`rounded-xl border p-4 transition-all duration-150 ${cardClass}`}>
+    <div ref={setNodeRef} style={{ ...dragStyle, ...(showMenu ? { zIndex: 50, position: 'relative' } : {}) }} className={`rounded-xl border p-4 transition-all duration-150 ${cardClass}`}>
       <div className="flex items-start gap-3">
         {/* Drag handle — only for owner on current date */}
         {canInteract && (
@@ -187,13 +188,20 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
               </button>
 
               {showMenu && (
-                <div className={`absolute right-0 top-full mt-1 z-20 w-44 rounded-xl shadow-xl border py-1 overflow-hidden ${isSleeping ? 'bg-slate-800 border-slate-700' : 'bg-white border-stone-100'}`}>
+                <div className={`absolute right-0 top-full mt-1 z-50 w-44 rounded-xl shadow-xl border py-1 overflow-hidden ${isSleeping ? 'bg-slate-800 border-slate-700' : 'bg-white border-stone-100'}`}>
                   <button
                     onClick={() => { markDone(); setShowMenu(false) }}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${isSleeping ? 'text-slate-200 hover:bg-slate-700 active:bg-slate-600' : 'text-stone-700 hover:bg-stone-100 active:bg-stone-200'}`}
                   >
                     <CheckCircle2 size={14} className="text-emerald-500" />
                     Mark as done
+                  </button>
+                  <button
+                    onClick={() => { onMoveTask(); setShowMenu(false) }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${isSleeping ? 'text-slate-200 hover:bg-slate-700 active:bg-slate-600' : 'text-stone-700 hover:bg-stone-100 active:bg-stone-200'}`}
+                  >
+                    <ArrowRight size={14} className={isSleeping ? 'text-slate-500' : 'text-stone-400'} />
+                    Move to day…
                   </button>
                   <button
                     onClick={() => { onEdit(); setShowMenu(false) }}
