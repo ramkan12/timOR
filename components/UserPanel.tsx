@@ -197,7 +197,12 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
   }
 
   async function handleNoteSave(text: string | null) {
-    const updated = { note: text, note_created_at: text ? new Date().toISOString() : null }
+    const isNewText = text !== user?.note
+    const updated = {
+      note: text,
+      note_created_at: text ? new Date().toISOString() : null,
+      ...(isNewText ? { note_reaction: null, note_reaction_by: null } : {}),
+    }
     const prev = user
     setUser(u => u ? { ...u, ...updated } : u)
     const { error } = await supabase.from('users').update(updated).eq('id', panelUserId)
