@@ -20,6 +20,16 @@ const CATEGORIES = [
 ]
 
 const DAY_ABBREVS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const CONFETTI_COLORS = ['#f43f5e', '#fb923c', '#facc15', '#4ade80', '#60a5fa', '#c084fc', '#f472b6']
+
+interface ConfettiPiece {
+  id: number
+  x: number
+  color: string
+  delay: number
+  size: number
+  round: boolean
+}
 
 interface Props {
   panelUserId: UserId
@@ -45,9 +55,11 @@ export default function SpeccialsModal({ panelUserId, currentUser, isRiham, isSl
   const [weekCounts, setWeekCounts] = useState<Record<string, number>>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const savingRef = useRef<Record<number, ReturnType<typeof setTimeout>>>({})
+  const [confetti, setConfetti] = useState<ConfettiPiece[]>([])
+  const debounceRef = useRef<Record<number, ReturnType<typeof setTimeout>>>({})
 
   const weekDays = getWeekDays(weekStart)
+  const filledCount = Object.values(drafts).filter(v => v && v.trim()).length
 
   // Fetch entries for selected date
   useEffect(() => {
@@ -102,7 +114,6 @@ export default function SpeccialsModal({ panelUserId, currentUser, isRiham, isSl
           setWeekCounts(prev => {
             const days = getWeekDays(weekStart)
             if (!days.includes(entry.date)) return prev
-            // Re-fetch week counts on any change
             supabase
               .from('speccials_entries')
               .select('date, category_index')
@@ -124,13 +135,8 @@ export default function SpeccialsModal({ panelUserId, currentUser, isRiham, isSl
     return () => { supabase.removeChannel(channel) }
   }, [panelUserId, selectedDate, weekStart])
 
-  function handleDraftChange(idx: number, value: string) {
-    setDrafts(prev => ({ ...prev, [idx]: value }))
-  }
-
-  function handleBlur(idx: number) {
-    if (!canInteract) return
-    const content = (drafts[idx] ?? '').trim()
+  function persistEntry(idx: number, value: string) {
+    const content = value.trim()
     if (content) {
       supabase.from('speccials_entries').upsert(
         { user_id: panelUserId, date: selectedDate, category_index: idx, content },
@@ -150,6 +156,19 @@ export default function SpeccialsModal({ panelUserId, currentUser, isRiham, isSl
           setWeekCounts(prev => ({ ...prev, [selectedDate]: Object.values(updated).filter(Boolean).length }))
         })
     }
+  }
+
+  function handleDraftChange(idx: number, value: string) {
+    setDrafts(prev => ({ ...prev, [idx]: value }))
+    if (!canInteract) return
+    clearTimeout(debounceRef.current[idx])
+    debounceRef.current[idx] = setTimeout(() => persistEntry(idx, value), 500)
+  }
+
+  function handleBlur(idx: number) {
+    if (!canInteract) return
+    clearTimeout(debounceRef.current[idx])
+    persistEntry(idx, drafts[idx] ?? '')
   }
 
   async function handleSaveAll() {
@@ -172,10 +191,22 @@ export default function SpeccialsModal({ panelUserId, currentUser, isRiham, isSl
         }
       })
     )
-    setWeekCounts(prev => ({ ...prev, [selectedDate]: Object.values(drafts).filter(v => v && v.trim()).length }))
+    const savedCount = Object.values(drafts).filter(v => v && v.trim()).length
+    setWeekCounts(prev => ({ ...prev, [selectedDate]: savedCount }))
     setSaving(false)
     setSaved(true)
-    setTimeout(() => onClose(), 1000)
+    if (savedCount === 9) {
+      setConfetti(Array.from({ length: 48 }, (_, i) => ({
+        id: i,
+        x: Math.random() * 100,
+        color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+        delay: Math.random() * 0.9,
+        size: 6 + Math.random() * 6,
+        round: Math.random() > 0.5,
+      })))
+      setTimeout(() => setConfetti([]), 3200)
+    }
+    setTimeout(() => setSaved(false), 1500)
   }
 
   function handleDaySelect(date: string) {
@@ -184,12 +215,7 @@ export default function SpeccialsModal({ panelUserId, currentUser, isRiham, isSl
     if (monday !== weekStart) setWeekStart(monday)
   }
 
-  const dateLabel = (() => {
-    const d = new Date(selectedDate + 'T00:00:00')
-    return format(d, 'EEEE, MMM d')
-  })()
-
-  const filledCount = Object.values(drafts).filter(v => v && v.trim()).length
+  const dateLabel = format(new Date(selectedDate + 'T00:00:00'), 'EEEE, MMM d')
 
   // Theming
   const accent = isRiham ? 'rose' : 'sky'
@@ -207,7 +233,26 @@ export default function SpeccialsModal({ panelUserId, currentUser, isRiham, isSl
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
-      <div className={`w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh] ${modalBg}`}>
+      <div className={`relative w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden ${modalBg}`}>
+
+        {/* Confetti pieces */}
+        {confetti.map(p => (
+          <div
+            key={p.id}
+            style={{
+              position: 'absolute',
+              left: `${p.x}%`,
+              top: 0,
+              width: p.size,
+              height: p.size,
+              backgroundColor: p.color,
+              borderRadius: p.round ? '50%' : '3px',
+              animation: `confetti-fall 2.6s ease-in ${p.delay}s forwards`,
+              pointerEvents: 'none',
+              zIndex: 60,
+            }}
+          />
+        ))}
 
         {/* Header */}
         <div className={`flex items-center justify-between px-5 py-4 border-b flex-shrink-0 ${headerBorder}`}>
@@ -218,7 +263,7 @@ export default function SpeccialsModal({ panelUserId, currentUser, isRiham, isSl
         </div>
 
         {/* Week strip */}
-        <div className={`px-4 py-3 border-b flex-shrink-0 ${headerBorder}`}>
+        <div className={`px-4 py-2 border-b flex-shrink-0 ${headerBorder}`}>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setWeekStart(addDays(weekStart, -7))}
@@ -243,7 +288,11 @@ export default function SpeccialsModal({ panelUserId, currentUser, isRiham, isSl
                     <span className="text-[11px] font-semibold">{DAY_ABBREVS[i]}</span>
                     <div className="flex gap-0.5 flex-wrap justify-center w-full">
                       {count > 0 ? (
-                        <span className={`text-[9px] font-bold ${isSelected ? 'opacity-90' : isSleeping ? 'text-slate-400' : `text-${accent}-400`}`}>
+                        <span className={`text-[9px] font-bold ${
+                          count === 9
+                            ? 'text-emerald-400'
+                            : isSelected ? 'opacity-90' : isSleeping ? 'text-slate-400' : `text-${accent}-400`
+                        }`}>
                           {count}/9
                         </span>
                       ) : (
@@ -266,35 +315,37 @@ export default function SpeccialsModal({ panelUserId, currentUser, isRiham, isSl
         </div>
 
         {/* Date label */}
-        <div className={`px-5 py-2.5 border-b flex-shrink-0 ${headerBorder}`}>
+        <div className={`px-5 py-1.5 border-b flex-shrink-0 ${headerBorder}`}>
           <p className={`text-xs font-medium ${hintColor}`}>
-            {dateLabel} · <span className={isRiham ? 'text-rose-500' : 'text-sky-500'}>{filledCount} of 9</span>
+            {dateLabel} · {filledCount === 9 ? (
+              <span className="text-emerald-500 font-semibold">✨ Complete!</span>
+            ) : (
+              <span className={isRiham ? 'text-rose-500' : 'text-sky-500'}>{filledCount} of 9</span>
+            )}
           </p>
         </div>
 
         {/* Category rows */}
-        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+        <div className="overflow-y-auto flex-1 px-5 py-3 space-y-2">
           {CATEGORIES.map((cat, idx) => (
             <div key={idx}>
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0 ${badgeBg}`}>
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className={`w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0 ${badgeBg}`}>
                   {cat.letter}
                 </span>
-                <div>
-                  <span className="text-sm font-semibold">{cat.name}</span>
-                  <span className={`text-xs ml-2 ${hintColor}`}>{cat.hint}</span>
-                </div>
+                <span className="text-sm font-semibold">{cat.name}</span>
               </div>
               {canInteract ? (
                 <textarea
-                  rows={2}
+                  rows={1}
                   value={drafts[idx] ?? ''}
                   onChange={e => handleDraftChange(idx, e.target.value)}
-                  placeholder={`What did you do for ${cat.name.toLowerCase()}?`}
+                  onBlur={() => handleBlur(idx)}
+                  placeholder={cat.hint}
                   className={`w-full rounded-xl border px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 transition-colors ${textareaBg} ${textareaFocus}`}
                 />
               ) : (
-                <p className={`text-sm px-1 min-h-[2.5rem] ${drafts[idx] ? readonlyColor : hintColor + ' italic'}`}>
+                <p className={`text-sm px-1 min-h-[2rem] ${drafts[idx] ? readonlyColor : hintColor + ' italic'}`}>
                   {drafts[idx] || 'Nothing logged yet'}
                 </p>
               )}
