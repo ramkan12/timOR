@@ -5,7 +5,7 @@ import { Plus, ChevronLeft, ChevronRight, Calendar, Sparkles } from 'lucide-reac
 import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { supabase } from '@/lib/supabase'
-import { Task, User, UserId } from '@/types'
+import { Task, User, UserId, UserNote } from '@/types'
 import { todayString, formatDateLabel, getElapsedSeconds, endOfDayMs } from '@/lib/utils'
 import TaskCard from './TaskCard'
 import ProgressBar from './ProgressBar'
@@ -54,6 +54,7 @@ const STARS_STYLE: React.CSSProperties = {
 export default function UserPanel({ panelUserId, currentUser, selectedDate, onDateChange }: Props) {
   const [tasks, setTasks] = useState<Task[]>([])
   const [user, setUser] = useState<User | null>(null)
+  const [dayNote, setDayNote] = useState<UserNote | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [showCalendar, setShowCalendar] = useState(false)
@@ -139,7 +140,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
       .then(({ data, error }) => { if (!error && data) setTasks(data as Task[]) })
   }, [panelUserId, selectedDate, fetchKey])
 
-  // Fetch user row (sleep status, note)
+  // Fetch user row (sleep status)
   useEffect(() => {
     supabase
       .from('users')
@@ -148,6 +149,13 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
       .single()
       .then(({ data }) => { if (data) setUser(data as User) })
   }, [panelUserId, fetchKey])
+
+  // Fetch note for selected date
+  useEffect(() => {
+    supabase.from('user_notes').select('*')
+      .eq('user_id', panelUserId).eq('date', selectedDate).maybeSingle()
+      .then(({ data }) => setDayNote(data as UserNote | null))
+  }, [panelUserId, selectedDate, fetchKey])
 
   // Real-time: tasks
   useEffect(() => {
@@ -184,11 +192,31 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
     return () => { supabase.removeChannel(channel) }
   }, [panelUserId])
 
+  // Real-time: user_notes
+  useEffect(() => {
+    const channel = supabase
+      .channel(`notes-${panelUserId}-${selectedDate}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'user_notes', filter: `user_id=eq.${panelUserId}` },
+        (payload) => {
+          if (payload.eventType === 'DELETE') {
+            if ((payload.old as UserNote).date === selectedDate) setDayNote(null)
+          } else {
+            const n = payload.new as UserNote
+            if (n.date === selectedDate) setDayNote(n)
+          }
+        }
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [panelUserId, selectedDate])
+
   async function handleNoteReact(emoji: string | null) {
-    if (!currentUser || currentUser === panelUserId) return
+    if (!currentUser || currentUser === panelUserId || !dayNote) return
     const updated = { note_reaction: emoji, note_reaction_by: emoji ? currentUser : null }
-    setUser(u => u ? { ...u, ...updated } : u)
-    await supabase.from('users').update(updated).eq('id', panelUserId)
+    setDayNote(n => n ? { ...n, ...updated } : n)
+    await supabase.from('user_notes').update(updated).eq('id', dayNote.id)
   }
 
   async function handleSleepToggle(sleeping: boolean) {
@@ -198,16 +226,29 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
   }
 
   async function handleNoteSave(text: string | null) {
-    const isNewText = text !== user?.note
-    const updated = {
-      note: text,
-      note_created_at: text ? new Date().toISOString() : null,
-      ...(isNewText ? { note_reaction: null, note_reaction_by: null } : {}),
+    if (!text) {
+      setDayNote(null)
+      if (dayNote) await supabase.from('user_notes').delete().eq('id', dayNote.id)
+      return
     }
-    const prev = user
-    setUser(u => u ? { ...u, ...updated } : u)
-    const { error } = await supabase.from('users').update(updated).eq('id', panelUserId)
-    if (error) setUser(prev)
+    const isNewText = text !== dayNote?.content
+    const now = new Date().toISOString()
+    setDayNote(prev => ({
+      id: prev?.id ?? '',
+      user_id: panelUserId,
+      date: selectedDate,
+      content: text,
+      created_at: now,
+      note_reaction: isNewText ? null : (prev?.note_reaction ?? null),
+      note_reaction_by: isNewText ? null : (prev?.note_reaction_by ?? null),
+    }))
+    const { data } = await supabase.from('user_notes')
+      .upsert(
+        { user_id: panelUserId, date: selectedDate, content: text, created_at: now, ...(isNewText ? { note_reaction: null, note_reaction_by: null } : {}) },
+        { onConflict: 'user_id,date' }
+      )
+      .select().single()
+    if (data) setDayNote(data as UserNote)
   }
 
   async function handleStopStale(task: Task) {
@@ -346,7 +387,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
 
         {/* Note widget */}
         {user && (
-          <NoteWidget user={user} isOwner={isOwner} isSleeping={isSleeping} onSave={handleNoteSave} onReact={handleNoteReact} />
+          <NoteWidget user={user} dayNote={dayNote} isOwner={isOwner} isSleeping={isSleeping} onSave={handleNoteSave} onReact={handleNoteReact} />
         )}
 
         {/* Date navigation */}

@@ -10,6 +10,16 @@ export interface User {
   note_reaction_by: string | null
 }
 
+export interface UserNote {
+  id: string
+  user_id: UserId
+  date: string
+  content: string
+  created_at: string
+  note_reaction: string | null
+  note_reaction_by: string | null
+}
+
 export interface SpeccialsEntry {
   id: string
   user_id: UserId

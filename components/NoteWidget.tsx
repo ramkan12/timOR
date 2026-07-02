@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { SmilePlus, X } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
-import { User } from '@/types'
+import { format } from 'date-fns'
+import { User, UserNote } from '@/types'
+import { todayString } from '@/lib/utils'
 
-const MAX_CHARS = 80
+const MAX_CHARS = 200
 
 const EMOJIS = [
   '❤️', '🔥', '😍', '😂', '🥹', '😮',
@@ -14,32 +15,32 @@ const EMOJIS = [
   '😅', '🤯', '💀', '👀', '🫶', '⭐',
 ]
 
+function formatNoteTime(iso: string): string {
+  const d = new Date(iso)
+  const dateStr = format(d, 'yyyy-MM-dd')
+  if (dateStr === todayString()) return `Today at ${format(d, 'h:mm a')}`
+  return format(d, "MMM d 'at' h:mm a")
+}
+
 interface Props {
   user: User
+  dayNote: UserNote | null
   isOwner: boolean
   isSleeping: boolean
   onSave: (text: string | null) => void
   onReact: (emoji: string | null) => void
 }
 
-export default function NoteWidget({ user, isOwner, isSleeping, onSave, onReact }: Props) {
-  const hasNote = !!user.note
+export default function NoteWidget({ user, dayNote, isOwner, isSleeping, onSave, onReact }: Props) {
+  const hasNote = !!dayNote?.content
   const isRiham = user.id === 'riham'
-  const myReaction = user.note_reaction ?? null
+  const myReaction = dayNote?.note_reaction ?? null
+  const timeLabel = dayNote?.created_at ? formatNoteTime(dayNote.created_at) : ''
 
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
-  const [timeLabel, setTimeLabel] = useState('')
   const [showPicker, setShowPicker] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-
-  useEffect(() => {
-    if (!hasNote || !user.note_created_at) return
-    const update = () => setTimeLabel(formatDistanceToNow(new Date(user.note_created_at!), { addSuffix: true }))
-    update()
-    const interval = setInterval(update, 30000)
-    return () => clearInterval(interval)
-  }, [hasNote, user.note_created_at])
 
   useEffect(() => {
     if (editing) textareaRef.current?.focus()
@@ -52,7 +53,7 @@ export default function NoteWidget({ user, isOwner, isSleeping, onSave, onReact 
 
   function startEditing() {
     if (!isOwner) return
-    setDraft(user.note ?? '')
+    setDraft(dayNote?.content ?? '')
     setEditing(true)
   }
 
@@ -93,7 +94,7 @@ export default function NoteWidget({ user, isOwner, isSleeping, onSave, onReact 
           onChange={e => setDraft(e.target.value.slice(0, MAX_CHARS))}
           onKeyDown={handleKeyDown}
           placeholder="What's on your mind?"
-          rows={2}
+          rows={3}
           maxLength={MAX_CHARS}
           className={`w-full rounded-xl border px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 ${inputBg}`}
         />
@@ -117,7 +118,7 @@ export default function NoteWidget({ user, isOwner, isSleeping, onSave, onReact 
             onClick={isOwner ? startEditing : undefined}
             className={`inline-flex flex-col gap-0.5 rounded-2xl border px-3.5 py-2 max-w-[85%] ${bubbleBg} ${isOwner ? 'cursor-pointer hover:brightness-[0.97] transition-all' : ''}`}
           >
-            <p className={`text-sm leading-snug ${textColor}`}>{user.note}</p>
+            <p className={`text-sm leading-snug break-words ${textColor}`}>{dayNote!.content}</p>
             <span className={`text-xs ${metaColor}`}>{timeLabel}</span>
           </div>
           {isOwner && (
@@ -130,7 +131,6 @@ export default function NoteWidget({ user, isOwner, isSleeping, onSave, onReact 
         {/* Reaction row — only for non-owner */}
         {!isOwner && (
           <div className="space-y-1.5 pl-1">
-            {/* Existing reaction pill + react/change button */}
             <div className="flex items-center gap-2">
               {myReaction && (
                 <span className={`text-base leading-none px-2 py-0.5 rounded-full border ${isSleeping ? 'bg-slate-700/60 border-slate-600' : 'bg-stone-50 border-stone-200'}`}>
@@ -158,7 +158,7 @@ export default function NoteWidget({ user, isOwner, isSleeping, onSave, onReact 
               )}
             </div>
 
-            {/* Inline emoji picker — no floating/absolute positioning */}
+            {/* Inline emoji picker */}
             {showPicker && (
               <div className={`rounded-2xl border p-2 inline-block ${isSleeping ? 'bg-slate-800 border-slate-700' : 'bg-white border-stone-100'} shadow-sm`}>
                 <div className="grid grid-cols-6 gap-0.5">
