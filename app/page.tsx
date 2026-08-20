@@ -2,12 +2,20 @@
 
 import { useEffect, useState } from 'react'
 
-import { Heart } from 'lucide-react'
-import { UserId } from '@/types'
+import { Heart, LogOut } from 'lucide-react'
+import { User, UserId } from '@/types'
 import { todayString } from '@/lib/utils'
 import UserPanel from '@/components/UserPanel'
+import SleepBar, { SleepPill, useSleepUsers } from '@/components/SleepBar'
 
-function IdentityModal({ onSelect }: { onSelect: (user: UserId) => void }) {
+interface IdentityModalProps {
+  onSelect: (user: UserId) => void
+  users: Record<UserId, User | null>
+  now: Date
+  onToggle: (userId: UserId, sleeping: boolean) => void
+}
+
+function IdentityModal({ onSelect, users, now, onToggle }: IdentityModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-50">
       <div className="text-center space-y-8 px-6">
@@ -29,20 +37,28 @@ function IdentityModal({ onSelect }: { onSelect: (user: UserId) => void }) {
         <div className="space-y-2">
           <p className="text-xs font-medium text-stone-400 uppercase tracking-wider">Who are you?</p>
           <div className="flex gap-3">
-            <button
-              onClick={() => onSelect('riham')}
-              className="flex-1 rounded-2xl bg-rose-50 border-2 border-rose-200 hover:border-rose-400 hover:bg-rose-100 transition-all py-5 px-8"
-            >
-              <p className="font-bold text-rose-700 text-lg">Rihamie</p>
-              <p className="text-[10px] text-rose-400 mt-0.5 whitespace-nowrap">Software Engineer</p>
-            </button>
-            <button
-              onClick={() => onSelect('omar')}
-              className="flex-1 rounded-2xl bg-sky-50 border-2 border-sky-200 hover:border-sky-400 hover:bg-sky-100 transition-all py-5 px-8"
-            >
-              <p className="font-bold text-sky-700 text-lg">Omarie</p>
-              <p className="text-[10px] text-sky-400 mt-0.5 whitespace-nowrap">Robotics Engineer</p>
-            </button>
+            <div className="relative flex-1 rounded-2xl bg-rose-50 border-2 border-rose-200 hover:border-rose-400 hover:bg-rose-100 transition-all">
+              {users.riham && (
+                <div className="absolute top-2 right-2">
+                  <SleepPill user={users.riham} isOwner now={now} onToggle={(s) => onToggle('riham', s)} compact />
+                </div>
+              )}
+              <button onClick={() => onSelect('riham')} className="w-full text-left py-5 px-8">
+                <p className="font-bold text-rose-700 text-lg">Rihamie</p>
+                <p className="text-[10px] text-rose-400 mt-0.5 whitespace-nowrap">Software Engineer</p>
+              </button>
+            </div>
+            <div className="relative flex-1 rounded-2xl bg-sky-50 border-2 border-sky-200 hover:border-sky-400 hover:bg-sky-100 transition-all">
+              {users.omar && (
+                <div className="absolute top-2 right-2">
+                  <SleepPill user={users.omar} isOwner now={now} onToggle={(s) => onToggle('omar', s)} compact />
+                </div>
+              )}
+              <button onClick={() => onSelect('omar')} className="w-full text-left py-5 px-8">
+                <p className="font-bold text-sky-700 text-lg">Omarie</p>
+                <p className="text-[10px] text-sky-400 mt-0.5 whitespace-nowrap">Robotics Engineer</p>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -56,6 +72,7 @@ export default function Home() {
   const [currentUser, setCurrentUser] = useState<UserId | null>(null)
   const [hydrated, setHydrated] = useState(false)
   const [selectedDate, setSelectedDate] = useState(todayString())
+  const { users: sleepUsers, now: sleepNow, handleToggle: handleSleepToggle } = useSleepUsers()
 
   useEffect(() => {
     const saved = sessionStorage.getItem('timor_user') as UserId | null
@@ -73,10 +90,10 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-stone-50">
       {/* Top bar */}
-      <header className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-b border-stone-200 bg-white">
+      <header className="flex-shrink-0 flex items-center justify-between gap-3 px-5 py-3 border-b border-stone-200 bg-white">
         <button
           onClick={() => window.location.reload()}
-          className="flex items-center gap-3 px-2 py-1 rounded-lg hover:bg-stone-100 active:bg-stone-200 transition-colors"
+          className="flex items-center gap-3 px-2 py-1 rounded-lg hover:bg-stone-100 active:bg-stone-200 transition-colors flex-1"
           title="Refresh"
         >
           <Heart size={22} className="text-rose-400" fill="currentColor" />
@@ -87,21 +104,25 @@ export default function Home() {
             </div>
           </div>
         </button>
-        {currentUser && (
-          <span className="text-xs text-stone-500">
-            Logged in as{' '}
-            <span className={`font-semibold ${currentUser === 'riham' ? 'text-rose-600' : 'text-sky-600'}`}>
-              {currentUser === 'riham' ? 'Rihamie' : 'Omarie'}
-            </span>
-            {' · '}
-            <button
-              onClick={() => { sessionStorage.removeItem('timor_user'); setCurrentUser(null) }}
-              className="text-stone-400 hover:text-stone-600 underline transition-colors"
-            >
-              switch
-            </button>
-          </span>
-        )}
+
+        <SleepBar currentUser={currentUser} users={sleepUsers} now={sleepNow} onToggle={handleSleepToggle} />
+
+        <div className="flex-1 flex items-center justify-end gap-2">
+          {currentUser && (
+            <>
+              <span className={`text-xs font-semibold hidden sm:inline ${currentUser === 'riham' ? 'text-rose-600' : 'text-sky-600'}`}>
+                {currentUser === 'riham' ? 'Rihamie' : 'Omarie'}
+              </span>
+              <button
+                onClick={() => { sessionStorage.removeItem('timor_user'); setCurrentUser(null) }}
+                title="Exit to main menu"
+                className="p-1.5 rounded-lg text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-colors"
+              >
+                <LogOut size={16} />
+              </button>
+            </>
+          )}
+        </div>
       </header>
 
       {/* Split panels */}
@@ -111,16 +132,20 @@ export default function Home() {
           currentUser={currentUser}
           selectedDate={selectedDate}
           onDateChange={setSelectedDate}
+          sleepUser={sleepUsers.riham}
         />
         <UserPanel
           panelUserId="omar"
           currentUser={currentUser}
           selectedDate={selectedDate}
           onDateChange={setSelectedDate}
+          sleepUser={sleepUsers.omar}
         />
       </main>
 
-      {!currentUser && <IdentityModal onSelect={handleIdentitySelect} />}
+      {!currentUser && (
+        <IdentityModal onSelect={handleIdentitySelect} users={sleepUsers} now={sleepNow} onToggle={handleSleepToggle} />
+      )}
     </div>
   )
 }

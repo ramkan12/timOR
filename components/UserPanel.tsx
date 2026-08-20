@@ -9,7 +9,6 @@ import { Task, User, UserId, UserNote } from '@/types'
 import { todayString, formatDateLabel, getElapsedSeconds, endOfDayMs } from '@/lib/utils'
 import TaskCard from './TaskCard'
 import ProgressBar from './ProgressBar'
-import SleepToggle from './SleepToggle'
 import AddTaskModal from './AddTaskModal'
 import CalendarModal from './CalendarModal'
 import NoteWidget from './NoteWidget'
@@ -20,6 +19,7 @@ interface Props {
   currentUser: UserId | null
   selectedDate: string
   onDateChange: (date: string) => void
+  sleepUser: User | null
 }
 
 function addDays(dateStr: string, days: number): string {
@@ -51,7 +51,7 @@ const STARS_STYLE: React.CSSProperties = {
   ].join(', '),
 }
 
-export default function UserPanel({ panelUserId, currentUser, selectedDate, onDateChange }: Props) {
+export default function UserPanel({ panelUserId, currentUser, selectedDate, onDateChange, sleepUser }: Props) {
   const [tasks, setTasks] = useState<Task[]>([])
   const [user, setUser] = useState<User | null>(null)
   const [dayNote, setDayNote] = useState<UserNote | null>(null)
@@ -71,7 +71,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
   const isReadOnly = selectedDate < todayString()
   const isOwner = currentUser === panelUserId
   const isToday = selectedDate === todayString()
-  const isSleeping = user?.sleep_status ?? false
+  const isSleeping = sleepUser?.sleep_status ?? user?.sleep_status ?? false
   const isRiham = panelUserId === 'riham'
 
   const displayName = isRiham ? 'Rihamie' : 'Omarie'
@@ -217,12 +217,6 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
     const updated = { note_reaction: emoji, note_reaction_by: emoji ? currentUser : null }
     setDayNote(n => n ? { ...n, ...updated } : n)
     await supabase.from('user_notes').update(updated).eq('id', dayNote.id)
-  }
-
-  async function handleSleepToggle(sleeping: boolean) {
-    const updated = { sleep_status: sleeping, sleep_updated_at: new Date().toISOString() }
-    await supabase.from('users').update(updated).eq('id', panelUserId)
-    setUser(prev => prev ? { ...prev, ...updated } : prev)
   }
 
   async function handleNoteSave(text: string | null) {
@@ -379,9 +373,6 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
             >
               <Sparkles size={15} />
             </button>
-            {user && (
-              <SleepToggle user={user} currentUser={currentUser} onToggle={handleSleepToggle} />
-            )}
           </div>
         </div>
 
