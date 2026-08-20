@@ -60,7 +60,7 @@ export function useSleepUsers() {
   function handleToggle(userId: UserId, sleeping: boolean) {
     const updated = { sleep_status: sleeping, sleep_updated_at: new Date().toISOString() }
     setUsers(prev => (prev[userId] ? { ...prev, [userId]: { ...prev[userId]!, ...updated } } : prev))
-    supabase.from('users').update(updated).eq('id', userId)
+    supabase.from('users').update(updated).eq('id', userId).then()
   }
 
   return { users, now, handleToggle }
