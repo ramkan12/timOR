@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Play, Square, CheckCircle2, Clock, Pencil, ArrowRight, Trash2, GripVertical } from 'lucide-react'
+import { Play, Square, CheckCircle2, Clock, Pencil, Copy, Trash2, GripVertical } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Task, UserId } from '@/types'
@@ -19,10 +19,10 @@ interface Props {
   onStartTimer: () => void
   onMarkDone: () => void
   onStopStale: () => void
-  onMoveTask: () => void
+  onCopyTask: () => void
 }
 
-export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, onUpdate, onDelete, onEdit, onStartTimer, onMarkDone, onStopStale, onMoveTask }: Props) {
+export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, onUpdate, onDelete, onEdit, onStartTimer, onMarkDone, onStopStale, onCopyTask }: Props) {
   const isOwner = currentUser === task.user_id
   const canInteract = isOwner && !isReadOnly
 
@@ -148,10 +148,10 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
         )}
 
         {/* Right column: timer on top, action icon below */}
-        {canInteract && (
+        {isOwner && (
           <div className="flex flex-col items-center gap-2 flex-shrink-0">
             {/* Timer button */}
-            {!task.is_complete && (
+            {canInteract && !task.is_complete && (
               <button
                 onClick={() => isRunning ? stopTimer() : onStartTimer()}
                 className={`rounded-lg p-1.5 transition-colors ${
@@ -169,58 +169,69 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
               </button>
             )}
 
-            {/* Action icon / menu */}
-            <div className="relative mt-2.5" ref={menuRef}>
-              <button
-                onClick={() => {
-                  if (task.is_complete) {
-                    markDone()
-                  } else {
-                    setShowMenu(v => !v)
+            {canInteract ? (
+              /* Action icon / menu */
+              <div className="relative mt-2.5" ref={menuRef}>
+                <button
+                  onClick={() => {
+                    if (task.is_complete) {
+                      markDone()
+                    } else {
+                      setShowMenu(v => !v)
+                    }
+                  }}
+                  className="transition-colors"
+                >
+                  {task.is_complete
+                    ? <CheckCircle2 size={16} className="text-emerald-500 hover:text-emerald-400" />
+                    : <Pencil size={13} className={isSleeping ? 'text-slate-600 hover:text-slate-400' : 'text-stone-300 hover:text-stone-500'} />
                   }
-                }}
-                className="transition-colors"
-              >
-                {task.is_complete
-                  ? <CheckCircle2 size={16} className="text-emerald-500 hover:text-emerald-400" />
-                  : <Pencil size={13} className={isSleeping ? 'text-slate-600 hover:text-slate-400' : 'text-stone-300 hover:text-stone-500'} />
-                }
-              </button>
+                </button>
 
-              {showMenu && (
-                <div className={`absolute right-0 top-full mt-1 z-50 w-44 rounded-xl shadow-xl border py-1 overflow-hidden ${isSleeping ? 'bg-slate-800 border-slate-700' : 'bg-white border-stone-100'}`}>
-                  <button
-                    onClick={() => { markDone(); setShowMenu(false) }}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${isSleeping ? 'text-slate-200 hover:bg-slate-700 active:bg-slate-600' : 'text-stone-700 hover:bg-stone-100 active:bg-stone-200'}`}
-                  >
-                    <CheckCircle2 size={14} className="text-emerald-500" />
-                    Mark as done
-                  </button>
-                  <button
-                    onClick={() => { onMoveTask(); setShowMenu(false) }}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${isSleeping ? 'text-slate-200 hover:bg-slate-700 active:bg-slate-600' : 'text-stone-700 hover:bg-stone-100 active:bg-stone-200'}`}
-                  >
-                    <ArrowRight size={14} className={isSleeping ? 'text-slate-500' : 'text-stone-400'} />
-                    Move to day…
-                  </button>
-                  <button
-                    onClick={() => { onEdit(); setShowMenu(false) }}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${isSleeping ? 'text-slate-200 hover:bg-slate-700 active:bg-slate-600' : 'text-stone-700 hover:bg-stone-100 active:bg-stone-200'}`}
-                  >
-                    <Pencil size={14} className={isSleeping ? 'text-slate-500' : 'text-stone-400'} />
-                    Edit task
-                  </button>
-                  <div className={`my-1 border-t ${isSleeping ? 'border-slate-700' : 'border-stone-100'}`} />
-                  <button
-                    onClick={() => { onDelete(); setShowMenu(false) }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:bg-red-950/50 active:bg-red-950 transition-colors"
-                  >
-                    <Trash2 size={14} />
-                    Delete task
-                  </button>
-                </div>
-              )}
-            </div>
+                {showMenu && (
+                  <div className={`absolute right-0 top-full mt-1 z-50 w-44 rounded-xl shadow-xl border py-1 overflow-hidden ${isSleeping ? 'bg-slate-800 border-slate-700' : 'bg-white border-stone-100'}`}>
+                    <button
+                      onClick={() => { markDone(); setShowMenu(false) }}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${isSleeping ? 'text-slate-200 hover:bg-slate-700 active:bg-slate-600' : 'text-stone-700 hover:bg-stone-100 active:bg-stone-200'}`}
+                    >
+                      <CheckCircle2 size={14} className="text-emerald-500" />
+                      Mark as done
+                    </button>
+                    <button
+                      onClick={() => { onCopyTask(); setShowMenu(false) }}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${isSleeping ? 'text-slate-200 hover:bg-slate-700 active:bg-slate-600' : 'text-stone-700 hover:bg-stone-100 active:bg-stone-200'}`}
+                    >
+                      <Copy size={14} className={isSleeping ? 'text-slate-500' : 'text-stone-400'} />
+                      Copy to day…
+                    </button>
+                    <button
+                      onClick={() => { onEdit(); setShowMenu(false) }}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${isSleeping ? 'text-slate-200 hover:bg-slate-700 active:bg-slate-600' : 'text-stone-700 hover:bg-stone-100 active:bg-stone-200'}`}
+                    >
+                      <Pencil size={14} className={isSleeping ? 'text-slate-500' : 'text-stone-400'} />
+                      Edit task
+                    </button>
+                    <div className={`my-1 border-t ${isSleeping ? 'border-slate-700' : 'border-stone-100'}`} />
+                    <button
+                      onClick={() => { onDelete(); setShowMenu(false) }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:bg-red-950/50 active:bg-red-950 transition-colors"
+                    >
+                      <Trash2 size={14} />
+                      Delete task
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Read-only day: only action available is copying this task elsewhere */
+              <button
+                onClick={onCopyTask}
+                title="Copy to another day"
+                className={`rounded-lg p-1.5 transition-colors ${isSleeping ? 'text-slate-500 hover:text-slate-300 hover:bg-slate-700' : 'text-stone-400 hover:text-stone-600 hover:bg-stone-100'}`}
+              >
+                <Copy size={14} />
+              </button>
+            )}
           </div>
         )}
       </div>

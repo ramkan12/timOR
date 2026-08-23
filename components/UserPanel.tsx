@@ -59,7 +59,8 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [showCalendar, setShowCalendar] = useState(false)
   const [showSpeccials, setShowSpeccials] = useState(false)
-  const [movingTask, setMovingTask] = useState<Task | null>(null)
+  const [copyingTask, setCopyingTask] = useState<Task | null>(null)
+  const [copyToast, setCopyToast] = useState<string | null>(null)
   const [now, setNow] = useState(Date.now())
   const [fetchKey, setFetchKey] = useState(0)
 
@@ -253,18 +254,21 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
     await supabase.from('tasks').update({ timer_started_at: null, actual_seconds: updated.actual_seconds }).eq('id', task.id)
   }
 
-  async function handleMoveTaskToDate(task: Task, dateStr: string) {
-    setMovingTask(null)
-    const elapsed = task.timer_started_at
-      ? Math.floor((Date.now() - new Date(task.timer_started_at).getTime()) / 1000)
-      : 0
-    setTasks(prev => prev.filter(t => t.id !== task.id))
-    await supabase.from('tasks').update({
+  async function handleCopyTaskToDate(task: Task, dateStr: string) {
+    setCopyingTask(null)
+    await supabase.from('tasks').insert({
+      user_id: panelUserId,
       date: dateStr,
-      sort_order: 0,
+      title: task.title,
+      description: task.description,
+      estimated_minutes: task.estimated_minutes,
+      actual_seconds: 0,
       timer_started_at: null,
-      actual_seconds: task.actual_seconds + elapsed,
-    }).eq('id', task.id)
+      is_complete: false,
+      sort_order: 0,
+    })
+    setCopyToast(`Copied to ${formatDateLabel(dateStr)}`)
+    setTimeout(() => setCopyToast(null), 2500)
   }
 
   async function handleDragEnd(event: DragEndEvent) {
@@ -437,7 +441,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
                     onStartTimer={() => handleStartTimer(task)}
                     onMarkDone={() => handleMarkDone(task)}
                     onStopStale={() => handleStopStale(task)}
-                    onMoveTask={() => setMovingTask(task)}
+                    onCopyTask={() => setCopyingTask(task)}
                   />
                 ))}
               </SortableContext>
@@ -466,7 +470,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
                         onStartTimer={() => handleStartTimer(task)}
                         onMarkDone={() => handleMarkDone(task)}
                         onStopStale={() => handleStopStale(task)}
-                    onMoveTask={() => setMovingTask(task)}
+                    onCopyTask={() => setCopyingTask(task)}
                       />
                     ))}
                   </SortableContext>
@@ -510,12 +514,12 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
         />
       )}
 
-      {/* Move task date picker */}
-      {movingTask && (
+      {/* Copy task date picker */}
+      {copyingTask && (
         <CalendarModal
           selectedDate={selectedDate}
-          onSelectDate={(dateStr) => handleMoveTaskToDate(movingTask, dateStr)}
-          onClose={() => setMovingTask(null)}
+          onSelectDate={(dateStr) => handleCopyTaskToDate(copyingTask, dateStr)}
+          onClose={() => setCopyingTask(null)}
         />
       )}
 
@@ -539,6 +543,13 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
           onClose={() => setEditingTask(null)}
           onTaskAdded={() => { setEditingTask(null); setFetchKey(k => k + 1) }}
         />
+      )}
+
+      {/* Copy confirmation toast */}
+      {copyToast && (
+        <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full text-sm font-medium shadow-lg transition-opacity ${isSleeping ? 'bg-slate-700 text-slate-100' : 'bg-stone-800 text-white'}`}>
+          {copyToast}
+        </div>
       )}
     </div>
   )
