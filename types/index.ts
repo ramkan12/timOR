@@ -41,4 +41,14 @@ export interface Task {
   is_complete: boolean
   sort_order: number
   created_at: string
+  tab_id: string | null
+  due_date: string | null // tab tasks only: last day this task appears; null = single-day task
+}
+
+export interface Tab {
+  id: string
+  user_id: UserId
+  name: string
+  created_at: string
+  ended_at: string | null // null = active indefinitely; otherwise the last day this tab is/was active
 }

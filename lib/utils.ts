@@ -1,6 +1,23 @@
 import { formatDistanceToNow, format } from 'date-fns'
+import { Tab, Task } from '@/types'
 
 export const GOAL_MINUTES = 420 // 7 hours
+
+// A tab is relevant for a given date if that date falls within its lifespan —
+// from creation through its end date (inclusive), or indefinitely if never ended.
+export function isTabActiveOnDate(tab: Tab, dateStr: string): boolean {
+  const createdDate = tab.created_at.slice(0, 10)
+  const endDate = tab.ended_at ? tab.ended_at.slice(0, 10) : null
+  return dateStr >= createdDate && (endDate === null || dateStr <= endDate)
+}
+
+// A task with a due date persists across every day from its creation through
+// that due date (inclusive) — the same row, same tracked progress. A task
+// without a due date only appears on the single day it was created for.
+export function isTaskVisibleOnDate(task: Pick<Task, 'date' | 'due_date'>, dateStr: string): boolean {
+  if (task.due_date) return task.date <= dateStr && dateStr <= task.due_date
+  return task.date === dateStr
+}
 
 export function minutesToDisplay(minutes: number): string {
   const h = Math.floor(minutes / 60)

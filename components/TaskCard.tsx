@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Play, Square, CheckCircle2, Clock, Pencil, Copy, Trash2, GripVertical } from 'lucide-react'
+import { Play, Square, CheckCircle2, Clock, Pencil, Copy, Trash2, GripVertical, CalendarClock } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Task, UserId } from '@/types'
-import { minutesToDisplay, secondsToDisplay, getElapsedSeconds } from '@/lib/utils'
+import { minutesToDisplay, secondsToDisplay, getElapsedSeconds, formatDateLabel } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 
 interface Props {
@@ -131,6 +131,12 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
                 {isRunning
                   ? `${secondsToDisplay(totalActualSeconds)} running`
                   : `${secondsToDisplay(totalActualSeconds)} tracked`}
+              </span>
+            )}
+            {task.due_date && (
+              <span className="flex items-center gap-1">
+                <CalendarClock size={11} />
+                Due {formatDateLabel(task.due_date)}
               </span>
             )}
           </div>

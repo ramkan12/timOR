@@ -1,14 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import { X } from 'lucide-react'
+import { X, Calendar } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Task, UserId } from '@/types'
+import { todayString, formatDateLabel } from '@/lib/utils'
+import CalendarModal from './CalendarModal'
 
 interface Props {
   userId: UserId
   date: string
   sortOrder?: number
+  tabId?: string | null
   onClose: () => void
   onTaskAdded?: () => void
   existingTask?: Task
@@ -17,17 +20,23 @@ interface Props {
 const HOUR_OPTIONS = Array.from({ length: 8 }, (_, i) => i)
 const MINUTE_OPTIONS = [0, 15, 30, 45]
 
-export default function AddTaskModal({ userId, date, sortOrder = 0, onClose, onTaskAdded, existingTask }: Props) {
+export default function AddTaskModal({ userId, date, sortOrder = 0, tabId = null, onClose, onTaskAdded, existingTask }: Props) {
   const isEditing = !!existingTask
+  const taskTabId = existingTask ? existingTask.tab_id : tabId
+  const isTabTask = taskTabId !== null
 
   const [title, setTitle] = useState(existingTask?.title ?? '')
   const [description, setDescription] = useState(existingTask?.description ?? '')
   const [hours, setHours] = useState(existingTask ? Math.floor(existingTask.estimated_minutes / 60) : 1)
   const [minutes, setMinutes] = useState(existingTask ? existingTask.estimated_minutes % 60 : 0)
+  const [dueDate, setDueDate] = useState<string | null>(existingTask?.due_date ?? null)
+  const [showDuePicker, setShowDuePicker] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
   const estimatedMinutes = hours * 60 + minutes
+  const taskStartDate = existingTask?.date ?? date
+  const dueDateMin = taskStartDate > todayString() ? taskStartDate : todayString()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -40,6 +49,7 @@ export default function AddTaskModal({ userId, date, sortOrder = 0, onClose, onT
       title: title.trim(),
       description: description.trim() || null,
       estimated_minutes: estimatedMinutes,
+      due_date: isTabTask ? dueDate : null,
     }
 
     const { error: dbError } = isEditing
@@ -47,6 +57,7 @@ export default function AddTaskModal({ userId, date, sortOrder = 0, onClose, onT
       : await supabase.from('tasks').insert({
           user_id: userId,
           date,
+          tab_id: tabId,
           ...fields,
           actual_seconds: 0,
           timer_started_at: null,
@@ -127,6 +138,34 @@ export default function AddTaskModal({ userId, date, sortOrder = 0, onClose, onT
             </div>
           </div>
 
+          {isTabTask && (
+            <div>
+              <label className="block text-xs font-medium text-stone-600 mb-1.5">
+                Due date <span className="text-stone-400 font-normal">(optional — stays visible every day until then)</span>
+              </label>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDuePicker(true)}
+                  className="flex-1 flex items-center gap-2 rounded-lg border border-stone-200 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
+                >
+                  <Calendar size={14} className="text-stone-400" />
+                  {dueDate ? formatDateLabel(dueDate) : 'No due date'}
+                </button>
+                {dueDate && (
+                  <button
+                    type="button"
+                    onClick={() => setDueDate(null)}
+                    title="Clear due date"
+                    className="p-2 rounded-lg text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {error && <p className="text-xs text-red-500">{error}</p>}
 
           <div className="flex gap-2 pt-1">
@@ -147,6 +186,17 @@ export default function AddTaskModal({ userId, date, sortOrder = 0, onClose, onT
           </div>
         </form>
       </div>
+
+      {showDuePicker && (
+        <CalendarModal
+          selectedDate={dueDate ?? dueDateMin}
+          minDate={dueDateMin}
+          panelUserId={userId}
+          tabId={taskTabId}
+          onSelectDate={(d) => { setDueDate(d); setShowDuePicker(false) }}
+          onClose={() => setShowDuePicker(false)}
+        />
+      )}
     </div>
   )
 }
