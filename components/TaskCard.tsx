@@ -7,6 +7,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { Task, UserId } from '@/types'
 import { minutesToDisplay, secondsToDisplay, getElapsedSeconds, formatDateLabel } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
+import ProgressBar from './ProgressBar'
 
 interface Props {
   task: Task
@@ -63,6 +64,9 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
   const totalActualSeconds = task.actual_seconds + elapsedSeconds
   const isRunning = !!task.timer_started_at
   const isRiham = task.user_id === 'riham'
+  const barActualSeconds = task.is_complete
+    ? Math.max(task.actual_seconds, task.estimated_minutes * 60)
+    : totalActualSeconds
 
   async function stopTimer() {
     const elapsed = getElapsedSeconds(task.timer_started_at)
@@ -120,6 +124,18 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
           </p>
           {task.description && (
             <p className={`mt-0.5 text-xs leading-relaxed ${isSleeping ? 'text-slate-400' : 'text-stone-500'}`}>{task.description}</p>
+          )}
+          {task.tab_id !== null && (
+            <div className="mt-2">
+              <ProgressBar
+                estimatedMinutes={task.estimated_minutes}
+                actualSeconds={barActualSeconds}
+                isSleeping={isSleeping}
+                isRiham={isRiham}
+                goalMinutes={task.estimated_minutes}
+                compact
+              />
+            </div>
           )}
           <div className={`mt-2 flex items-center gap-3 text-xs ${isSleeping ? 'text-slate-500' : 'text-stone-400'}`}>
             <span className="flex items-center gap-1">
