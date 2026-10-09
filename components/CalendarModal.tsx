@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
-import { GOAL_MINUTES, todayString } from '@/lib/utils'
+import { GOAL_MINUTES, todayString, completedCreditSeconds } from '@/lib/utils'
 import { UserId } from '@/types'
 
 interface Props {
@@ -76,7 +76,7 @@ export default function CalendarModal({ selectedDate, onSelectDate, onClose, pan
         for (const t of data) {
           if (!result[t.date]) result[t.date] = { riham: 0, omar: 0 }
           const contribution = t.is_complete
-            ? Math.max(t.actual_seconds, t.estimated_minutes * 60)
+            ? completedCreditSeconds(t)
             : t.actual_seconds
           if (t.user_id === 'riham') result[t.date].riham += contribution
           else result[t.date].omar += contribution

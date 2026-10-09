@@ -6,7 +6,7 @@ import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter,
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { supabase } from '@/lib/supabase'
 import { Tab, Task, User, UserId, UserNote } from '@/types'
-import { todayString, formatDateLabel, getElapsedSeconds, endOfDayMs, secondsToDisplay, minutesToDisplay, isTabActiveOnDate, isTaskVisibleOnDate } from '@/lib/utils'
+import { todayString, formatDateLabel, getElapsedSeconds, endOfDayMs, secondsToDisplay, minutesToDisplay, isTabActiveOnDate, isTaskVisibleOnDate, completedCreditSeconds } from '@/lib/utils'
 import TaskCard from './TaskCard'
 import ProgressBar from './ProgressBar'
 import AddTaskModal from './AddTaskModal'
@@ -432,7 +432,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
 
   const actualSeconds = tasks.reduce((sum, t) => {
     if (t.is_complete) {
-      return sum + Math.max(t.actual_seconds, t.estimated_minutes * 60)
+      return sum + completedCreditSeconds(t)
     }
     const elapsed = t.timer_started_at
       ? Math.floor((now - new Date(t.timer_started_at).getTime()) / 1000)

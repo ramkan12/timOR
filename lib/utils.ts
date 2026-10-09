@@ -3,6 +3,12 @@ import { Tab, Task } from '@/types'
 
 export const GOAL_MINUTES = 420 // 7 hours
 
+// Progress credit for a completed task: the time actually tracked, or the
+// estimate if nothing was tracked at all (e.g. the timer was never started).
+export function completedCreditSeconds(t: Pick<Task, 'actual_seconds' | 'estimated_minutes'>): number {
+  return t.actual_seconds > 0 ? t.actual_seconds : t.estimated_minutes * 60
+}
+
 // A tab is relevant for a given date if that date falls within its lifespan —
 // from creation through its end date (inclusive), or indefinitely if never ended.
 export function isTabActiveOnDate(tab: Tab, dateStr: string): boolean {

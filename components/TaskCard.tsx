@@ -5,7 +5,7 @@ import { Play, Square, CheckCircle2, Clock, Pencil, Copy, Trash2, GripVertical, 
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Task, UserId } from '@/types'
-import { minutesToDisplay, secondsToDisplay, getElapsedSeconds, formatDateLabel } from '@/lib/utils'
+import { minutesToDisplay, secondsToDisplay, getElapsedSeconds, formatDateLabel, completedCreditSeconds } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import ProgressBar from './ProgressBar'
 
@@ -65,7 +65,7 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
   const isRunning = !!task.timer_started_at
   const isRiham = task.user_id === 'riham'
   const barActualSeconds = task.is_complete
-    ? Math.max(task.actual_seconds, task.estimated_minutes * 60)
+    ? completedCreditSeconds(task)
     : totalActualSeconds
 
   async function stopTimer() {

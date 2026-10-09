@@ -93,22 +93,24 @@ No auth. On first visit a modal asks "Who are you?" — Riham or Omar. Choice sa
 ### Time tracking
 - `actual_seconds` stores accumulated tracked time in **seconds**
 - When stopping a timer: `actual_seconds += elapsed seconds` (not minutes, preserves sub-minute time)
-- When marking done: `actual_seconds` is NOT inflated — the progress bar formula handles crediting estimated time for completed tasks
+- When marking done: `actual_seconds` is NOT inflated — the progress bar formula decides the credit for completed tasks
 - Only ONE timer can run at a time per panel; starting a new timer auto-stops the previous one
 
 ### Progress bar formula (in UserPanel)
 ```ts
-// Completed tasks: credit max(tracked, estimated)
+// Completed tasks: credit tracked time, or the estimate if nothing was tracked
+//   (completedCreditSeconds in lib/utils.ts — also used by TaskCard + CalendarModal)
 // Incomplete tasks: credit actual tracked + live elapsed
 const actualSeconds = tasks.reduce((sum, t) => {
-  if (t.is_complete) return sum + Math.max(t.actual_seconds, t.estimated_minutes * 60)
+  if (t.is_complete) return sum + completedCreditSeconds(t)
   const elapsed = t.timer_started_at ? Math.floor((now - new Date(t.timer_started_at).getTime()) / 1000) : 0
   return sum + t.actual_seconds + elapsed
 }, 0)
 ```
 
 This means:
-- Marking done gives full estimated-time credit even with no timer
+- Finishing faster than estimated credits only the tracked time (6h estimate, 4h tracked → 4h)
+- Marking done with no tracked time at all gives full estimated-time credit
 - Unmarking restores the real tracked time (no data loss)
 
 ### Notes
