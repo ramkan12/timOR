@@ -45,6 +45,18 @@ export interface Task {
   due_date: string | null // tab tasks only: last day this task appears; null = single-day task
 }
 
+// A saved look for a card, remembered by normalized title + description so every
+// matching card (past and future) renders the same way.
+export interface CardStyle {
+  id: string
+  user_id: UserId
+  title_key: string
+  desc_key: string
+  color: string
+  pattern: string
+  updated_at: string
+}
+
 export interface Tab {
   id: string
   user_id: UserId

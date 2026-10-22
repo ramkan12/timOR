@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { SpeccialsEntry, UserId } from '@/types'
 import { getMondayOfWeek, getWeekDays, todayString } from '@/lib/utils'
+import { isHalloween } from '@/lib/season'
 
 const CATEGORIES = [
   { letter: 'S', name: 'Strength',     hint: 'Physical strength & discipline' },
@@ -21,6 +22,8 @@ const CATEGORIES = [
 
 const DAY_ABBREVS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const CONFETTI_COLORS = ['#f43f5e', '#fb923c', '#facc15', '#4ade80', '#60a5fa', '#c084fc', '#f472b6']
+// Halloween candy: pumpkin, candy-corn yellow, witch purple, licorice, cream, slime
+const CANDY_COLORS = ['#f97316', '#facc15', '#a855f7', '#1c1917', '#fef3c7', '#84cc16']
 
 interface ConfettiPiece {
   id: number
@@ -196,10 +199,11 @@ export default function SpeccialsModal({ panelUserId, currentUser, isRiham, isSl
     setSaving(false)
     setSaved(true)
     if (savedCount === 9) {
+      const palette = isHalloween() ? CANDY_COLORS : CONFETTI_COLORS
       setConfetti(Array.from({ length: 48 }, (_, i) => ({
         id: i,
         x: Math.random() * 100,
-        color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+        color: palette[Math.floor(Math.random() * palette.length)],
         delay: Math.random() * 0.9,
         size: 6 + Math.random() * 6,
         round: Math.random() > 0.5,
@@ -218,7 +222,6 @@ export default function SpeccialsModal({ panelUserId, currentUser, isRiham, isSl
   const dateLabel = format(new Date(selectedDate + 'T00:00:00'), 'EEEE, MMM d')
 
   // Theming
-  const accent = isRiham ? 'rose' : 'sky'
   const badgeBg = isSleeping ? 'bg-slate-700 text-slate-200' : isRiham ? 'bg-rose-100 text-rose-700' : 'bg-sky-100 text-sky-700'
   const selectedPill = isSleeping ? 'bg-slate-500 text-white' : isRiham ? 'bg-rose-500 text-white' : 'bg-sky-500 text-white'
   const todayRing = isSleeping ? 'ring-1 ring-slate-400' : isRiham ? 'ring-1 ring-rose-300' : 'ring-1 ring-sky-300'
@@ -291,7 +294,7 @@ export default function SpeccialsModal({ panelUserId, currentUser, isRiham, isSl
                         <span className={`text-[9px] font-bold ${
                           count === 9
                             ? 'text-emerald-400'
-                            : isSelected ? 'opacity-90' : isSleeping ? 'text-slate-400' : `text-${accent}-400`
+                            : isSelected ? 'opacity-90' : isSleeping ? 'text-slate-400' : (isRiham ? 'text-rose-400' : 'text-sky-400')
                         }`}>
                           {count}/9
                         </span>
@@ -342,7 +345,7 @@ export default function SpeccialsModal({ panelUserId, currentUser, isRiham, isSl
                   onChange={e => handleDraftChange(idx, e.target.value)}
                   onBlur={() => handleBlur(idx)}
                   placeholder={cat.hint}
-                  className={`w-full rounded-xl border px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 transition-colors ${textareaBg} ${textareaFocus}`}
+                  className={`w-full rounded-xl border px-3 py-2 text-base sm:text-sm resize-none focus:outline-none focus:ring-2 transition-colors ${textareaBg} ${textareaFocus}`}
                 />
               ) : (
                 <p className={`text-sm px-1 min-h-[2rem] ${drafts[idx] ? readonlyColor : hintColor + ' italic'}`}>

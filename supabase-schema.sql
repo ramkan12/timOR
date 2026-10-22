@@ -39,3 +39,18 @@ create policy "allow all on tasks" on tasks for all using (true) with check (tru
 -- Enable real-time for both tables
 -- Go to: Supabase Dashboard > Database > Replication > Tables
 -- and toggle on "users" and "tasks"
+
+-- Card looks: a saved color + pattern per card, keyed by normalized title + description
+create table if not exists card_styles (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null references users(id),
+  title_key text not null,
+  desc_key text not null default '',
+  color text not null default 'none',
+  pattern text not null default 'plain',
+  updated_at timestamptz not null default now(),
+  unique (user_id, title_key, desc_key)
+);
+alter table card_styles enable row level security;
+create policy "allow all on card_styles" on card_styles for all using (true) with check (true);
+alter publication supabase_realtime add table card_styles;

@@ -38,6 +38,8 @@ components/
   AddTaskModal.tsx   # create + edit modal (pass existingTask prop for edit mode)
   ProgressBar.tsx    # dual bar: estimated (lighter) vs actual (solid), ticks every second
   SleepToggle.tsx    # sleep switch + "last updated X ago" label
+  HalloweenDecor.tsx # seasonal bats/ghosts/moon/cobwebs (renders nothing out of season);
+                     # also exports CornerWebs
   NoteWidget.tsx     # Instagram-style note bubble: one note per user, persists until deleted,
                      # owner can add/edit/delete inline, non-owner sees read-only
 
@@ -45,6 +47,10 @@ lib/
   supabase.ts        # single Supabase client instance
   utils.ts           # GOAL_MINUTES=420, minutesToDisplay, secondsToDisplay,
                      # getElapsedSeconds, formatSleepTimestamp, formatDateLabel, todayString
+  cardMatch.ts       # "same card" matching (normalized title + fuzzy description),
+                     # topCommonCards (quick-pick ranking), findCardStyle
+  season.ts          # detectSeason / applySeason / isHalloween (stamps <html data-season>)
+  cardStyles.ts      # CARD_COLORS / CARD_PATTERNS definitions + getCardLook for TaskCard
 
 types/
   index.ts           # UserId, User, Task interfaces
@@ -76,6 +82,16 @@ Two tables. RLS enabled with allow-all policies (URL is the secret).
 | is_complete | boolean | |
 | sort_order | integer | display order; default 0 |
 | created_at | timestamptz | auto |
+
+**`card_styles`** — a saved card look, unique on `(user_id, title_key, desc_key)`
+| column | type | notes |
+|---|---|---|
+| id | uuid PK | auto |
+| user_id | text FK | |
+| title_key / desc_key | text | `normalizeText()` of title / description |
+| color | text | id from `CARD_COLORS` (`'none'` = default) |
+| pattern | text | id from `CARD_PATTERNS` (`'plain'` = none) |
+| updated_at | timestamptz | |
 
 > ⚠️ The column is `actual_seconds` (stores seconds, NOT minutes). It was renamed from `actual_minutes` early in development.
 
@@ -118,6 +134,25 @@ Instagram-style notes live in the `users` table (`note`, `note_created_at`). A n
 
 Max note length is 80 characters (enforced in `NoteWidget`).
 
+### Common cards & card looks
+- **Quick pick:** the New Task modal shows up to 5 "usual cards", the most frequent repeated cards from the user's last 30 days (`topCommonCards`). Two tasks are the same card when their titles normalize equal and their descriptions are near-identical (`descSimilar`: equal, every word of one appears in the other, or word Jaccard ≥ 0.6). Tapping one prefills title, latest description and latest duration.
+- **Card looks:** any card can get a color + pattern from the **Edit** modal (the picker is hidden in New Task to keep it uncluttered). It's stored in `card_styles` by normalized title + description, not on the task, so every past and future matching card renders the same. `findCardStyle` tries an exact key match first, then a fuzzy one. Choosing None + Plain deletes the matched style row. UserPanel fetches the styles, subscribes to them in real time and passes `cardStyle` to `TaskCard`.
+
+### Landing page night mode
+When **both** users' `sleep_status` is true, the "Who are you?" screen (`IdentityModal` in `app/page.tsx`) switches to night mode, matching a sleeping panel: a dark rose→indigo→sky gradient, the shared `STARS_STYLE` overlay (`lib/nightSky.ts`), a dark glass card, a moon icon and a "both asleep" pill. In October it also gets the harvest moon and the night bats from `HalloweenDecor`. It's purely visual and reacts live to the sleep pills via `useSleepUsers`. Sleep status itself is never changed automatically.
+
+### Seasonal theme (Halloween)
+- **When:** all of October, automatically (`detectSeason` in `lib/season.ts`). `app/page.tsx` calls `applySeason` in its hydration effect before the first render, which stamps `<html data-season="halloween">`. Preview any time with `?season=halloween`, or force it off with `?season=off`; the choice sticks for the tab via sessionStorage.
+- **Colors:** `globals.css` redefines `--color-rose-*` with purple values (Rihamie = witch purple) and `--color-sky-*` with orange values (Omarie = pumpkin orange) under `html[data-season="halloween"]`, plus a cream `--background`. Tailwind v4 utilities read these variables, so no component class names change. The asleep night turns deep purple / ember automatically.
+- **Font:** Henny Penny loads in `layout.tsx` as `--font-spooky`. While the season is active it applies only to the logo: the "tim" text (`seasonal-heading`) and the "OR" badge (`logo-or`, which is serif the rest of the year). The user names stay in the normal font.
+- **Extras:**
+  - `HalloweenDecor`: bats and ghosts, a moon when asleep, and cobwebs in the panel corners.
+  - The heart logo becomes 🎃.
+  - `ProgressBar` gets candy-corn stripes and a 🎃 goal marker that lights up at 7h.
+  - SPECCIALS confetti uses `CANDY_COLORS`.
+  - The empty task list shows a 👻.
+- **Adding another season:** extend `Season`/`detectSeason`, add an `html[data-season="..."]` block in `globals.css`, and gate decorations on a matching helper.
+
 ### Real-time strategy
 UserPanel uses Supabase `postgres_changes` subscriptions for both `tasks` and `users` tables. Additionally, a `fetchKey` state increments every 8 seconds to poll as a fallback (in case real-time lags or the subscription drops). Task adds/edits also bump `fetchKey` via `onTaskAdded` callback.
 
@@ -130,7 +165,7 @@ Both panels share a single `selectedDate` state in `page.tsx`. Navigating dates 
 
 **Task ordering:** Tasks are fetched ordered by `is_complete asc, sort_order asc, created_at asc` so incomplete tasks always appear above completed ones. Each group (incomplete / completed) has its own `DndContext` so drag handles (GripVertical) reorder within the group only. On drop, `sort_order` is renumbered 0..n for that group and persisted. Starting a timer bumps that task to `sort_order = 0` within the incomplete group. Marking a task done moves it to the bottom of the completed group; un-marking moves it to the bottom of the incomplete group.
 
-**Color identity:** Rihamie = rose throughout (progress bar `bg-rose-300`, ring, buttons). Omarie = sky throughout (`bg-sky-400`, ring, buttons). Both share amber (≥75% progress) and emerald (goal reached) milestone colors.
+**Color identity:** Rihamie = rose throughout (progress bar `bg-rose-300`, ring, buttons). Omarie = sky throughout (`bg-sky-400`, ring, buttons). Both share amber (≥75% progress) and emerald (goal reached) milestone colors. Always write full literal class names (no `` `text-${color}-400` ``), since Tailwind can't detect dynamically built classes. During the Halloween season, rose/sky are remapped to purple/orange via CSS variables (see Seasonal theme).
 
 **Change the 7-hour goal:** edit `GOAL_MINUTES` in `lib/utils.ts`.
 

@@ -44,7 +44,7 @@ export default function TabModal({ userId, onClose, onSaved, existingTab }: Prop
     : 'bg-sky-500 hover:bg-sky-600 text-white'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
       <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl">
         <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
           <h2 className="font-semibold text-stone-800">{isEditing ? 'Rename Tab' : 'New Tab'}</h2>
@@ -61,7 +61,7 @@ export default function TabModal({ userId, onClose, onSaved, existingTab }: Prop
               value={name}
               onChange={e => setName(e.target.value.slice(0, MAX_NAME_LENGTH))}
               placeholder="e.g. Math"
-              className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-300"
+              className="w-full rounded-lg border border-stone-200 px-3 py-2 text-base sm:text-sm text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-300"
               maxLength={MAX_NAME_LENGTH}
               autoFocus
             />

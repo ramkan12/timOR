@@ -5,11 +5,15 @@ import { Plus, ChevronLeft, ChevronRight, Calendar, Sparkles } from 'lucide-reac
 import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { supabase } from '@/lib/supabase'
-import { Tab, Task, User, UserId, UserNote } from '@/types'
+import { CardStyle, Tab, Task, User, UserId, UserNote } from '@/types'
 import { todayString, formatDateLabel, getElapsedSeconds, endOfDayMs, secondsToDisplay, minutesToDisplay, isTabActiveOnDate, isTaskVisibleOnDate, completedCreditSeconds } from '@/lib/utils'
 import TaskCard from './TaskCard'
 import ProgressBar from './ProgressBar'
 import AddTaskModal from './AddTaskModal'
+import { findCardStyle } from '@/lib/cardMatch'
+import { isHalloween } from '@/lib/season'
+import HalloweenDecor from './HalloweenDecor'
+import { STARS_STYLE } from '@/lib/nightSky'
 import CalendarModal from './CalendarModal'
 import NoteWidget from './NoteWidget'
 import SpeccialsModal from './SpeccialsModal'
@@ -30,29 +34,6 @@ function addDays(dateStr: string, days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-const STARS_STYLE: React.CSSProperties = {
-  backgroundImage: [
-    'radial-gradient(1px 1px at 12% 8%, rgba(255,255,255,0.9) 0%, transparent 100%)',
-    'radial-gradient(1.5px 1.5px at 28% 5%, rgba(255,255,255,0.7) 0%, transparent 100%)',
-    'radial-gradient(1px 1px at 45% 12%, rgba(255,255,255,0.8) 0%, transparent 100%)',
-    'radial-gradient(2px 2px at 67% 7%, rgba(255,255,255,0.6) 0%, transparent 100%)',
-    'radial-gradient(1px 1px at 82% 15%, rgba(255,255,255,0.9) 0%, transparent 100%)',
-    'radial-gradient(1px 1px at 8% 25%, rgba(255,255,255,0.5) 0%, transparent 100%)',
-    'radial-gradient(1.5px 1.5px at 55% 20%, rgba(255,255,255,0.7) 0%, transparent 100%)',
-    'radial-gradient(1px 1px at 91% 30%, rgba(255,255,255,0.6) 0%, transparent 100%)',
-    'radial-gradient(2px 2px at 35% 35%, rgba(255,255,255,0.4) 0%, transparent 100%)',
-    'radial-gradient(1px 1px at 73% 28%, rgba(255,255,255,0.8) 0%, transparent 100%)',
-    'radial-gradient(1px 1px at 20% 45%, rgba(255,255,255,0.5) 0%, transparent 100%)',
-    'radial-gradient(1.5px 1.5px at 88% 50%, rgba(255,255,255,0.6) 0%, transparent 100%)',
-    'radial-gradient(1px 1px at 50% 55%, rgba(255,255,255,0.4) 0%, transparent 100%)',
-    'radial-gradient(2px 2px at 5% 60%, rgba(255,255,255,0.7) 0%, transparent 100%)',
-    'radial-gradient(1px 1px at 95% 18%, rgba(255,255,255,0.5) 0%, transparent 100%)',
-    'radial-gradient(1px 1px at 62% 42%, rgba(255,255,255,0.6) 0%, transparent 100%)',
-    'radial-gradient(1.5px 1.5px at 15% 70%, rgba(255,255,255,0.4) 0%, transparent 100%)',
-    'radial-gradient(1px 1px at 78% 65%, rgba(255,255,255,0.5) 0%, transparent 100%)',
-  ].join(', '),
-}
-
 export default function UserPanel({ panelUserId, currentUser, selectedDate, onDateChange, sleepUser }: Props) {
   const [tasks, setTasks] = useState<Task[]>([])
   const [user, setUser] = useState<User | null>(null)
@@ -66,6 +47,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
   const [now, setNow] = useState(Date.now())
   const [fetchKey, setFetchKey] = useState(0)
   const [tabs, setTabs] = useState<Tab[]>([])
+  const [cardStyles, setCardStyles] = useState<CardStyle[]>([])
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
   const [showCreateTab, setShowCreateTab] = useState(false)
   const [editingTab, setEditingTab] = useState<Tab | null>(null)
@@ -160,6 +142,12 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
       .then(({ data, error }) => { if (!error && data) setTabs(data as Tab[]) })
   }, [panelUserId, fetchKey])
 
+  // Fetch saved card looks
+  useEffect(() => {
+    supabase.from('card_styles').select('*').eq('user_id', panelUserId)
+      .then(({ data, error }) => { if (!error && data) setCardStyles(data as CardStyle[]) })
+  }, [panelUserId, fetchKey])
+
   // If the currently-active tab isn't relevant for the date now being viewed
   // (navigated outside its lifespan), fall back to Main rather than showing a
   // stale/invisible selection.
@@ -222,6 +210,27 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
             setTabs(prev => prev.map(t => t.id === payload.new.id ? (payload.new as Tab) : t))
           } else if (payload.eventType === 'DELETE') {
             setTabs(prev => prev.filter(t => t.id !== (payload.old as Tab).id))
+          }
+        }
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [panelUserId])
+
+  // Real-time: card looks
+  useEffect(() => {
+    const channel = supabase
+      .channel(`card-styles-${panelUserId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'card_styles', filter: `user_id=eq.${panelUserId}` },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setCardStyles(prev => [...prev, payload.new as CardStyle])
+          } else if (payload.eventType === 'UPDATE') {
+            setCardStyles(prev => prev.map(s => s.id === payload.new.id ? (payload.new as CardStyle) : s))
+          } else if (payload.eventType === 'DELETE') {
+            setCardStyles(prev => prev.filter(s => s.id !== (payload.old as CardStyle).id))
           }
         }
       )
@@ -448,6 +457,9 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
         <div className="absolute inset-0 pointer-events-none z-0" style={STARS_STYLE} />
       )}
 
+      {/* Seasonal decorations (bats, ghosts, cobwebs) — renders nothing out of season */}
+      <HalloweenDecor variant="panel" isSleeping={isSleeping} />
+
       {/* Panel header */}
       <div className={`relative z-10 px-5 pt-5 pb-4 border-b space-y-3 ${isSleeping ? 'border-slate-700/50' : 'border-stone-100'}`}>
         <div className="flex items-center justify-between">
@@ -530,6 +542,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
       <div className="relative z-10 flex-1 overflow-y-auto px-5 py-4 space-y-2.5">
         {tasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
+            {isHalloween() && <span className="mb-2 text-3xl animate-[ghost-float_5s_ease-in-out_infinite]">👻</span>}
             <p className={`text-sm ${isSleeping ? 'text-slate-400' : 'text-stone-400'}`}>
               {isReadOnly ? 'No tasks recorded for this day.' : 'No tasks yet — add one to get started!'}
             </p>
@@ -553,6 +566,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
                     onMarkDone={() => handleMarkDone(task)}
                     onStopStale={() => handleStopStale(task)}
                     onCopyTask={() => setCopyingTask(task)}
+                    cardStyle={findCardStyle(cardStyles, task.title, task.description)}
                   />
                 ))}
               </SortableContext>
@@ -582,6 +596,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
                         onMarkDone={() => handleMarkDone(task)}
                         onStopStale={() => handleStopStale(task)}
                     onCopyTask={() => setCopyingTask(task)}
+                    cardStyle={findCardStyle(cardStyles, task.title, task.description)}
                       />
                     ))}
                   </SortableContext>

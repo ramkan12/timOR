@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from 'react'
 import { Play, Square, CheckCircle2, Clock, Pencil, Copy, Trash2, GripVertical, CalendarClock } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Task, UserId } from '@/types'
+import { CardStyle, Task, UserId } from '@/types'
 import { minutesToDisplay, secondsToDisplay, getElapsedSeconds, formatDateLabel, completedCreditSeconds } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
+import { getCardLook } from '@/lib/cardStyles'
 import ProgressBar from './ProgressBar'
 
 interface Props {
@@ -21,9 +22,10 @@ interface Props {
   onMarkDone: () => void
   onStopStale: () => void
   onCopyTask: () => void
+  cardStyle?: CardStyle
 }
 
-export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, onUpdate, onDelete, onEdit, onStartTimer, onMarkDone, onStopStale, onCopyTask }: Props) {
+export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, onUpdate, onDelete, onEdit, onStartTimer, onMarkDone, onStopStale, onCopyTask, cardStyle }: Props) {
   const isOwner = currentUser === task.user_id
   const canInteract = isOwner && !isReadOnly
 
@@ -87,7 +89,20 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
     onMarkDone()
   }
 
-  const cardClass = task.is_complete
+  const look = getCardLook(cardStyle, isSleeping)
+
+  // Styled cards supply their own background/border; only the state effects are added here.
+  const styledStateClass = task.is_complete
+    ? isSleeping
+      ? 'opacity-50 hover:opacity-70 cursor-pointer'
+      : 'opacity-60 hover:opacity-90 hover:shadow-sm cursor-pointer'
+    : isRunning
+    ? `shadow-md ring-1 ${isRiham ? (isSleeping ? 'ring-rose-400' : 'ring-rose-300') : (isSleeping ? 'ring-sky-400' : 'ring-sky-300')}`
+    : 'shadow-sm hover:shadow-lg hover:-translate-y-0.5 cursor-pointer'
+
+  const cardClass = look
+    ? `${look.className} ${styledStateClass}`
+    : task.is_complete
     ? isSleeping
       ? 'border-slate-700 bg-slate-800/40 opacity-50 hover:opacity-70 cursor-pointer'
       : 'border-stone-200 bg-stone-50 opacity-60 hover:opacity-90 hover:bg-white hover:shadow-sm cursor-pointer'
@@ -100,7 +115,7 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
       : 'border-stone-200 bg-white shadow-sm hover:shadow-lg hover:border-stone-400 hover:bg-stone-50 hover:-translate-y-0.5 cursor-pointer'
 
   return (
-    <div ref={setNodeRef} style={{ ...dragStyle, ...(showMenu ? { zIndex: 50, position: 'relative' } : {}) }} className={`rounded-xl border p-4 transition-all duration-150 ${cardClass}`}>
+    <div ref={setNodeRef} style={{ ...look?.style, ...dragStyle, ...(showMenu ? { zIndex: 50, position: 'relative' } : {}) }} className={`rounded-xl border p-4 transition-all duration-150 ${cardClass}`}>
       <div className="flex items-start gap-3">
         {/* Drag handle — only for owner on current date */}
         {canInteract && (

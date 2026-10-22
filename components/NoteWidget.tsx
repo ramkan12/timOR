@@ -96,7 +96,7 @@ export default function NoteWidget({ user, dayNote, isOwner, isSleeping, onSave,
           placeholder="What's on your mind?"
           rows={3}
           maxLength={MAX_CHARS}
-          className={`w-full rounded-xl border px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 ${inputBg}`}
+          className={`w-full rounded-xl border px-3 py-2 text-base sm:text-sm resize-none focus:outline-none focus:ring-2 ${inputBg}`}
         />
         <div className="flex items-center justify-between">
           <span className={`text-xs tabular-nums ${isSleeping ? 'text-slate-500' : 'text-stone-400'}`}>{draft.length}/{MAX_CHARS}</span>
