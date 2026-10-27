@@ -11,7 +11,7 @@ import TaskCard from './TaskCard'
 import ProgressBar from './ProgressBar'
 import AddTaskModal from './AddTaskModal'
 import { findCardStyle } from '@/lib/cardMatch'
-import { isHalloween } from '@/lib/season'
+import { isHalloween, paletteSeasonForDate } from '@/lib/season'
 import HalloweenDecor from './HalloweenDecor'
 import { STARS_STYLE } from '@/lib/nightSky'
 import CalendarModal from './CalendarModal'
@@ -567,6 +567,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
                     onStopStale={() => handleStopStale(task)}
                     onCopyTask={() => setCopyingTask(task)}
                     cardStyle={findCardStyle(cardStyles, task.title, task.description)}
+                    paletteSeason={paletteSeasonForDate(selectedDate)}
                   />
                 ))}
               </SortableContext>
@@ -597,6 +598,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
                         onStopStale={() => handleStopStale(task)}
                     onCopyTask={() => setCopyingTask(task)}
                     cardStyle={findCardStyle(cardStyles, task.title, task.description)}
+                    paletteSeason={paletteSeasonForDate(selectedDate)}
                       />
                     ))}
                   </SortableContext>

@@ -50,7 +50,7 @@ lib/
   cardMatch.ts       # "same card" matching (normalized title + fuzzy description),
                      # topCommonCards (quick-pick ranking), findCardStyle
   season.ts          # detectSeason / applySeason / isHalloween (stamps <html data-season>)
-  cardStyles.ts      # CARD_COLORS / CARD_PATTERNS definitions + getCardLook for TaskCard
+  cardStyles.ts      # SEASON_PALETTES (seasonal card colors), resolveColor, getCardLook for TaskCard
 
 types/
   index.ts           # UserId, User, Task interfaces
@@ -89,8 +89,8 @@ Two tables. RLS enabled with allow-all policies (URL is the secret).
 | id | uuid PK | auto |
 | user_id | text FK | |
 | title_key / desc_key | text | `normalizeText()` of title / description |
-| color | text | id from `CARD_COLORS` (`'none'` = default) |
-| pattern | text | id from `CARD_PATTERNS` (`'plain'` = none) |
+| color | text | `'slot-N'` into the current season's palette (`'none'` = default; legacy names map via `LEGACY_SLOT`) |
+| pattern | text | retired; always `'plain'` |
 | updated_at | timestamptz | |
 
 > ⚠️ The column is `actual_seconds` (stores seconds, NOT minutes). It was renamed from `actual_minutes` early in development.
@@ -136,7 +136,7 @@ Max note length is 80 characters (enforced in `NoteWidget`).
 
 ### Common cards & card looks
 - **Quick pick:** the New Task modal shows up to 5 "usual cards", the most frequent repeated cards from the user's last 30 days (`topCommonCards`). Two tasks are the same card when their titles normalize equal and their descriptions are near-identical (`descSimilar`: equal, every word of one appears in the other, or word Jaccard ≥ 0.6). Tapping one prefills title, latest description and latest duration.
-- **Card looks:** any card can get a color + pattern from the **Edit** modal (the picker is hidden in New Task to keep it uncluttered). It's stored in `card_styles` by normalized title + description, not on the task, so every past and future matching card renders the same. `findCardStyle` tries an exact key match first, then a fuzzy one. Choosing None + Plain deletes the matched style row. UserPanel fetches the styles, subscribes to them in real time and passes `cardStyle` to `TaskCard`.
+- **Card looks:** any card can get a color from the **Edit** modal ("Card Preview"; hidden in New Task to keep it uncluttered). Patterns were retired (the `pattern` column stays, always written `'plain'`). Colors come from a **seasonal palette** (`SEASON_PALETTES` in `lib/cardStyles.ts`), chosen by the season of the **viewed** date (`paletteSeasonForDate(selectedDate)` in `lib/season.ts`, so browsing to Dec 31 shows winter): Spring Mar 21–Jun 20, Summer Jun 21–Sep 22, Fall Sep 23–Dec 20, Winter Dec 21–Mar 20. A saved look stores a slot id (`'slot-N'`), not a hex, so on the solstice every "fall #3" card becomes "winter #3" (wrapping when a palette is shorter). Old named ids (`teal`, `lavender`…) map to slots via `LEGACY_SLOT`. Cards render as a soft tint plus a solid left stripe (inline `color-mix` styles; pale colors get a stronger wash and a darker stripe). Preview another season with `?palette=winter|spring|summer|fall`. A look is stored in `card_styles` by normalized title + description, not on the task, so every past and future matching card renders the same. `findCardStyle` tries an exact key match first, then a fuzzy one. Choosing no color deletes the matched style row. UserPanel fetches the styles, subscribes to them in real time and passes `cardStyle` to `TaskCard`.
 
 ### Landing page night mode
 When **both** users' `sleep_status` is true, the "Who are you?" screen (`IdentityModal` in `app/page.tsx`) switches to night mode, matching a sleeping panel: a dark rose→indigo→sky gradient, the shared `STARS_STYLE` overlay (`lib/nightSky.ts`), a dark glass card, a moon icon and a "both asleep" pill. In October it also gets the harvest moon and the night bats from `HalloweenDecor`. It's purely visual and reacts live to the sleep pills via `useSleepUsers`. Sleep status itself is never changed automatically.

@@ -7,7 +7,8 @@ import { supabase } from '@/lib/supabase'
 import { CardStyle, Task, UserId } from '@/types'
 import { todayString, formatDateLabel, minutesToDisplay } from '@/lib/utils'
 import { CommonCard, findCardStyle, normalizeText, topCommonCards } from '@/lib/cardMatch'
-import { CARD_COLORS, CARD_PATTERNS, CardLookChoice, PLAIN_LOOK, getCardLook, isPlainLook } from '@/lib/cardStyles'
+import { CardLookChoice, PLAIN_LOOK, SEASON_LABELS, currentPalette, getCardLook, isPlainLook, normalizeColorId, slotId } from '@/lib/cardStyles'
+import { paletteSeasonForDate } from '@/lib/season'
 import CalendarModal from './CalendarModal'
 
 interface Props {
@@ -59,7 +60,12 @@ export default function AddTaskModal({ userId, date, sortOrder = 0, tabId = null
 
   const savedStyle = findCardStyle(styles, title, description)
   const look: CardLookChoice = customLook ?? savedStyle ?? PLAIN_LOOK
-  const previewLook = getCardLook(look, false)
+  // Palette of the day being viewed, so editing on Dec 31 shows winter colors
+  const paletteSeason = paletteSeasonForDate(date)
+  const previewLook = getCardLook(look, false, paletteSeason)
+  const selectedColor = normalizeColorId(look.color, paletteSeason)
+  const palette = currentPalette(paletteSeason)
+  const seasonInfo = SEASON_LABELS[paletteSeason]
 
   function applyCommonCard(card: CommonCard) {
     setTitle(card.title)
@@ -81,7 +87,7 @@ export default function AddTaskModal({ userId, date, sortOrder = 0, tabId = null
       title_key: normalizeText(title),
       desc_key: normalizeText(description),
       color: customLook.color,
-      pattern: customLook.pattern,
+      pattern: 'plain', // patterns were retired; column kept for old rows
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,title_key,desc_key' })
   }
@@ -150,7 +156,7 @@ export default function AddTaskModal({ userId, date, sortOrder = 0, tabId = null
               </label>
               <div className="flex flex-col gap-1.5">
                 {commonCards.map(card => {
-                  const cardLook = getCardLook(findCardStyle(styles, card.title, card.description), false)
+                  const cardLook = getCardLook(findCardStyle(styles, card.title, card.description), false, paletteSeason)
                   return (
                     <button
                       key={`${card.title}|${card.description ?? ''}`}
@@ -254,34 +260,28 @@ export default function AddTaskModal({ userId, date, sortOrder = 0, tabId = null
           {isEditing && (
             <div>
               <label className="block text-xs font-medium text-stone-600 mb-1.5">
-                Card look <span className="text-stone-400 font-normal">(remembered for every card with this title + description)</span>
+                Card Preview
               </label>
+              <p className="mb-2 text-[11px] text-stone-400">
+                {seasonInfo.emoji} {seasonInfo.label} colors
+              </p>
               <div className="flex flex-wrap gap-2 mb-2">
-                {CARD_COLORS.map(c => (
+                <button
+                  type="button"
+                  title="No color"
+                  onClick={() => setCustomLook(PLAIN_LOOK)}
+                  className={`h-6 w-6 rounded-full border border-stone-300 bg-white transition-transform hover:scale-110 ${selectedColor === 'none' ? 'ring-2 ring-offset-2 ring-stone-500' : ''}`}
+                />
+                {palette.map((c, i) => (
                   <button
-                    key={c.id}
+                    key={c.hex}
                     type="button"
-                    title={c.label}
-                    onClick={() => setCustomLook({ ...look, color: c.id })}
-                    className={`h-6 w-6 rounded-full transition-transform hover:scale-110 ${c.swatch} ${look.color === c.id ? 'ring-2 ring-offset-2 ring-stone-500' : ''}`}
+                    title={c.name}
+                    onClick={() => setCustomLook({ color: slotId(i) })}
+                    style={{ backgroundColor: c.hex }}
+                    className={`h-6 w-6 rounded-full border border-black/10 transition-transform hover:scale-110 ${selectedColor === slotId(i) ? 'ring-2 ring-offset-2 ring-stone-500' : ''}`}
                   />
                 ))}
-              </div>
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {CARD_PATTERNS.map(p => {
-                  const swatch = getCardLook({ color: look.color, pattern: p.id }, false)
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => setCustomLook({ ...look, pattern: p.id })}
-                      style={swatch?.style}
-                      className={`rounded-md border px-2.5 py-1 text-[11px] font-medium text-stone-600 ${swatch?.className ?? 'bg-white border-stone-200'} ${look.pattern === p.id ? 'ring-2 ring-stone-500' : ''}`}
-                    >
-                      {p.label}
-                    </button>
-                  )
-                })}
               </div>
               <div
                 style={previewLook?.style}

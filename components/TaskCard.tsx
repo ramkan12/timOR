@@ -8,6 +8,7 @@ import { CardStyle, Task, UserId } from '@/types'
 import { minutesToDisplay, secondsToDisplay, getElapsedSeconds, formatDateLabel, completedCreditSeconds } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { getCardLook } from '@/lib/cardStyles'
+import type { PaletteSeason } from '@/lib/season'
 import ProgressBar from './ProgressBar'
 
 interface Props {
@@ -23,9 +24,10 @@ interface Props {
   onStopStale: () => void
   onCopyTask: () => void
   cardStyle?: CardStyle
+  paletteSeason?: PaletteSeason
 }
 
-export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, onUpdate, onDelete, onEdit, onStartTimer, onMarkDone, onStopStale, onCopyTask, cardStyle }: Props) {
+export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, onUpdate, onDelete, onEdit, onStartTimer, onMarkDone, onStopStale, onCopyTask, cardStyle, paletteSeason }: Props) {
   const isOwner = currentUser === task.user_id
   const canInteract = isOwner && !isReadOnly
 
@@ -89,7 +91,7 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
     onMarkDone()
   }
 
-  const look = getCardLook(cardStyle, isSleeping)
+  const look = getCardLook(cardStyle, isSleeping, paletteSeason)
 
   // Styled cards supply their own background/border; only the state effects are added here.
   const styledStateClass = task.is_complete
@@ -122,7 +124,7 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
           <button
             {...listeners}
             {...attributes}
-            className={`flex-shrink-0 mt-0.5 cursor-grab active:cursor-grabbing touch-none ${isSleeping ? 'text-slate-600 hover:text-slate-400' : 'text-stone-300 hover:text-stone-400'}`}
+            className={`flex-shrink-0 mt-0.5 cursor-grab active:cursor-grabbing touch-none ${isSleeping ? 'text-slate-400 hover:text-slate-200' : 'text-stone-400 hover:text-stone-600'}`}
             tabIndex={-1}
           >
             <GripVertical size={14} />
@@ -152,13 +154,13 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
               />
             </div>
           )}
-          <div className={`mt-2 flex items-center gap-3 text-xs ${isSleeping ? 'text-slate-500' : 'text-stone-400'}`}>
+          <div className={`mt-2 flex items-center gap-3 text-xs ${isSleeping ? 'text-slate-400' : 'text-stone-500'}`}>
             <span className="flex items-center gap-1">
               <Clock size={11} />
               {minutesToDisplay(task.estimated_minutes)}
             </span>
             {totalActualSeconds > 0 && (
-              <span className={`font-medium ${isRunning ? (isRiham ? 'text-rose-400' : 'text-sky-400') : isSleeping ? 'text-slate-400' : 'text-stone-500'}`}>
+              <span className={`font-medium ${isRunning ? (isRiham ? 'text-rose-400' : 'text-sky-400') : isSleeping ? 'text-slate-300' : 'text-stone-600'}`}>
                 {isRunning
                   ? `${secondsToDisplay(totalActualSeconds)} running`
                   : `${secondsToDisplay(totalActualSeconds)} tracked`}
@@ -197,8 +199,8 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
                       ? isSleeping ? 'bg-rose-900/60 text-rose-400 hover:bg-rose-900 active:bg-rose-800' : 'bg-rose-100 text-rose-600 hover:bg-rose-200 active:bg-rose-300'
                       : isSleeping ? 'bg-sky-900/60 text-sky-400 hover:bg-sky-900 active:bg-sky-800' : 'bg-sky-100 text-sky-600 hover:bg-sky-200 active:bg-sky-300'
                     : isSleeping
-                      ? 'bg-slate-700 text-slate-300 hover:bg-slate-600 active:bg-slate-500'
-                      : 'bg-stone-100 text-stone-500 hover:bg-stone-200 active:bg-stone-300'
+                      ? 'bg-white/10 text-slate-200 hover:bg-white/15 active:bg-white/20'
+                      : 'bg-stone-900/[0.07] text-stone-600 hover:bg-stone-900/[0.12] active:bg-stone-900/[0.18]'
                 }`}
                 title={isRunning ? 'Stop timer' : 'Start timer'}
               >
@@ -221,7 +223,7 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
                 >
                   {task.is_complete
                     ? <CheckCircle2 size={16} className="text-emerald-500 hover:text-emerald-400" />
-                    : <Pencil size={13} className={isSleeping ? 'text-slate-600 hover:text-slate-400' : 'text-stone-300 hover:text-stone-500'} />
+                    : <Pencil size={13} className={isSleeping ? 'text-slate-400 hover:text-slate-200' : 'text-stone-500 hover:text-stone-700'} />
                   }
                 </button>
 
@@ -238,14 +240,14 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
                       onClick={() => { onCopyTask(); setShowMenu(false) }}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${isSleeping ? 'text-slate-200 hover:bg-slate-700 active:bg-slate-600' : 'text-stone-700 hover:bg-stone-100 active:bg-stone-200'}`}
                     >
-                      <Copy size={14} className={isSleeping ? 'text-slate-500' : 'text-stone-400'} />
+                      <Copy size={14} className={isSleeping ? 'text-slate-400' : 'text-stone-500'} />
                       Copy to day…
                     </button>
                     <button
                       onClick={() => { onEdit(); setShowMenu(false) }}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${isSleeping ? 'text-slate-200 hover:bg-slate-700 active:bg-slate-600' : 'text-stone-700 hover:bg-stone-100 active:bg-stone-200'}`}
                     >
-                      <Pencil size={14} className={isSleeping ? 'text-slate-500' : 'text-stone-400'} />
+                      <Pencil size={14} className={isSleeping ? 'text-slate-400' : 'text-stone-500'} />
                       Edit task
                     </button>
                     <div className={`my-1 border-t ${isSleeping ? 'border-slate-700' : 'border-stone-100'}`} />
@@ -264,7 +266,7 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
               <button
                 onClick={onCopyTask}
                 title="Copy to another day"
-                className={`rounded-lg p-1.5 transition-colors ${isSleeping ? 'text-slate-500 hover:text-slate-300 hover:bg-slate-700' : 'text-stone-400 hover:text-stone-600 hover:bg-stone-100'}`}
+                className={`rounded-lg p-1.5 transition-colors ${isSleeping ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-stone-500 hover:text-stone-700 hover:bg-stone-900/[0.07]'}`}
               >
                 <Copy size={14} />
               </button>
