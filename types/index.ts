@@ -41,8 +41,8 @@ export interface Task {
   is_complete: boolean
   sort_order: number
   created_at: string
-  tab_id: string | null
-  due_date: string | null // tab tasks only: last day this task appears; null = single-day task
+  tab_id: string | null // legacy (tabs were removed); always null for new tasks
+  due_date: string | null // legacy (tabs were removed); always null for new tasks
 }
 
 // A saved look for a card, remembered by normalized title + description so every
@@ -55,12 +55,4 @@ export interface CardStyle {
   color: string
   pattern: string
   updated_at: string
-}
-
-export interface Tab {
-  id: string
-  user_id: UserId
-  name: string
-  created_at: string
-  ended_at: string | null // null = active indefinitely; otherwise the last day this tab is/was active
 }

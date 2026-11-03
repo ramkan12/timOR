@@ -2,21 +2,25 @@
 // startup (see app/page.tsx); globals.css remaps colors from it and components read it
 // through isHalloween().
 
-export type Season = 'halloween' | null
+export type Season = 'halloween' | 'autumn' | null
 
 const OVERRIDE_KEY = 'timor_season'
 
-// Halloween runs all of October. `?season=halloween` / `?season=off` overrides the
-// calendar for previews and sticks for the rest of the tab session.
+// Halloween runs all of October; the cozy autumn "Harvest" theme runs September and
+// November. `?season=halloween|autumn|off` overrides the calendar for previews and
+// sticks for the rest of the tab session.
 export function detectSeason(): Season {
   const param = new URLSearchParams(window.location.search).get('season')
   try {
-    if (param === 'halloween' || param === 'off') sessionStorage.setItem(OVERRIDE_KEY, param)
+    if (param === 'halloween' || param === 'autumn' || param === 'off') sessionStorage.setItem(OVERRIDE_KEY, param)
     const override = sessionStorage.getItem(OVERRIDE_KEY)
-    if (override === 'halloween') return 'halloween'
+    if (override === 'halloween' || override === 'autumn') return override
     if (override === 'off') return null
   } catch {}
-  return new Date().getMonth() === 9 ? 'halloween' : null
+  const month = new Date().getMonth()
+  if (month === 9) return 'halloween'
+  if (month === 8 || month === 10) return 'autumn'
+  return null
 }
 
 export function applySeason(season: Season) {
@@ -56,4 +60,8 @@ export function getPaletteSeason(date = new Date()): PaletteSeason {
 export function paletteSeasonForDate(dateStr: string): PaletteSeason {
   const [y, m, d] = dateStr.split('-').map(Number)
   return getPaletteSeason(new Date(y, m - 1, d))
+}
+
+export function isAutumn(): boolean {
+  return typeof document !== 'undefined' && document.documentElement.dataset.season === 'autumn'
 }

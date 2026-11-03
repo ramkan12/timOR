@@ -100,6 +100,52 @@ html[data-season="halloween"] .logo-or {
   50%      { transform: translateY(-3px) scale(1.15); }
 }
 
+/* ── Seasonal theme: cozy autumn "Harvest" (September + November) ────────────
+   Same remap trick as Halloween: Rihamie → berry #8D2830, Omarie → slate blue #335C67
+   (each pinned at shade 500, lighter/darker shades generated around it). */
+html[data-season="autumn"] {
+  --background: #FFF4E6;
+  --color-rose-50: oklch(97.5% 0.016 20.5);
+  --color-rose-100: oklch(94.5% 0.030 20.5);
+  --color-rose-200: oklch(86.0% 0.065 20.5);
+  --color-rose-300: oklch(64.0% 0.120 20.5);
+  --color-rose-400: oklch(53.0% 0.135 20.5);
+  --color-rose-500: oklch(43.6% 0.135 20.5); /* #8D2830 */
+  --color-rose-600: oklch(37.6% 0.129 20.5);
+  --color-rose-700: oklch(32.6% 0.119 20.5);
+  --color-rose-800: oklch(28.6% 0.106 20.5);
+  --color-rose-900: oklch(24.6% 0.092 20.5);
+  --color-rose-950: oklch(18.6% 0.075 20.5);
+  --color-sky-50: oklch(97.5% 0.006 217.0);
+  --color-sky-100: oklch(94.5% 0.011 217.0);
+  --color-sky-200: oklch(86.0% 0.024 217.0);
+  --color-sky-300: oklch(64.0% 0.045 217.0);
+  --color-sky-400: oklch(54.0% 0.050 217.0);
+  --color-sky-500: oklch(44.9% 0.049 217.0); /* #335C67 */
+  --color-sky-600: oklch(38.9% 0.047 217.0);
+  --color-sky-700: oklch(33.9% 0.043 217.0);
+  --color-sky-800: oklch(29.9% 0.038 217.0);
+  --color-sky-900: oklch(25.9% 0.034 217.0);
+  --color-sky-950: oklch(19.9% 0.027 217.0);
+}
+
+html[data-season="autumn"] .seasonal-heading,
+html[data-season="autumn"] .logo-or {
+  font-family: var(--font-autumn), serif;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+@keyframes leaf-fall {
+  0%   { transform: translate(0, -10vh) rotate(0deg); opacity: 0; }
+  10%  { opacity: 0.9; }
+  25%  { transform: translate(30px, 20vh) rotate(90deg); }
+  50%  { transform: translate(-20px, 50vh) rotate(200deg); }
+  75%  { transform: translate(25px, 80vh) rotate(290deg); }
+  90%  { opacity: 0.9; }
+  100% { transform: translate(0, 110vh) rotate(360deg); opacity: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
 }

@@ -6,8 +6,9 @@ import { Bot, CodeXml, Heart, LogOut, Moon, type LucideIcon } from 'lucide-react
 import { format } from 'date-fns'
 import { User, UserId } from '@/types'
 import { todayString } from '@/lib/utils'
-import { applySeason, detectSeason, isHalloween } from '@/lib/season'
+import { applySeason, detectSeason, isAutumn, isHalloween } from '@/lib/season'
 import HalloweenDecor, { CornerWebs } from '@/components/HalloweenDecor'
+import AutumnDecor, { LeafWreath } from '@/components/AutumnDecor'
 import { STARS_STYLE } from '@/lib/nightSky'
 import UserPanel from '@/components/UserPanel'
 import SleepBar, { SleepPill, useSleepUsers } from '@/components/SleepBar'
@@ -50,6 +51,7 @@ function IdentityModal({ onSelect, users, now, onToggle }: IdentityModalProps) {
           : <div className="absolute inset-0 bg-[radial-gradient(rgb(120_113_108/0.12)_1px,transparent_1px)] [background-size:22px_22px]" />}
       </div>
       <HalloweenDecor variant="landing" isSleeping={asleep} />
+      <AutumnDecor variant="landing" isSleeping={asleep} />
 
       <div className="relative flex min-h-full items-center justify-center px-4 py-10">
         <div className={`relative w-full max-w-md rounded-3xl px-6 py-10 sm:px-10 text-center shadow-2xl ring-1 backdrop-blur-xl transition-colors duration-700 animate-[rise-in_0.6s_ease-out] ${asleep ? 'bg-slate-900/55 shadow-black/40 ring-white/10' : 'bg-white/70 shadow-stone-300/40 ring-white/80'}`}>
@@ -59,11 +61,14 @@ function IdentityModal({ onSelect, users, now, onToggle }: IdentityModalProps) {
             <div className="flex items-center justify-center text-rose-400">
               {isHalloween()
                 ? <span className="text-3xl leading-none animate-[heartbeat_2.4s_ease-in-out_infinite] drop-shadow-[0_4px_10px_rgba(249,115,22,0.45)]">🎃</span>
+                : isAutumn()
+                ? <span className="text-3xl leading-none animate-[heartbeat_2.4s_ease-in-out_infinite] drop-shadow-[0_4px_10px_rgba(234,88,12,0.4)]">🍂</span>
                 : asleep
                 ? <Moon size={28} fill="currentColor" className="text-indigo-200 drop-shadow-[0_0_12px_rgba(199,210,254,0.6)]" />
                 : <Heart size={28} fill="currentColor" className="animate-[heartbeat_2.4s_ease-in-out_infinite] drop-shadow-[0_4px_10px_rgba(251,113,133,0.45)]" />}
             </div>
-            <h1 className={`flex items-center justify-center gap-1.5 text-5xl font-bold tracking-tight ${asleep ? 'text-slate-100' : 'text-stone-800'}`}>
+            <h1 className={`relative flex items-center justify-center gap-1.5 text-5xl font-bold tracking-tight ${asleep ? 'text-slate-100' : 'text-stone-800'}`}>
+              <LeafWreath />
               <span className="seasonal-heading">tim</span>
               <span className={`flex h-14 w-[4.25rem] items-center justify-center rounded-xl bg-stone-900 shadow-lg shadow-stone-900/20 -rotate-3 ${asleep ? 'ring-1 ring-white/20' : ''}`}>
                 <span className="logo-or text-rose-300 text-4xl font-extrabold">OR</span>
@@ -148,6 +153,8 @@ export default function Home() {
         >
           {isHalloween()
             ? <span className="text-xl leading-none">🎃</span>
+            : isAutumn()
+            ? <span className="text-xl leading-none">🍂</span>
             : <Heart size={22} className="text-rose-400" fill="currentColor" />}
           <div className="flex items-center gap-0.5">
             <span className="seasonal-heading text-xl font-bold text-stone-700 tracking-tight">tim</span>

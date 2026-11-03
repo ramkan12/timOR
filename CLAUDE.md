@@ -40,6 +40,7 @@ components/
   SleepToggle.tsx    # sleep switch + "last updated X ago" label
   HalloweenDecor.tsx # seasonal bats/ghosts/moon/cobwebs (renders nothing out of season);
                      # also exports CornerWebs
+  AutumnDecor.tsx    # Sep/Nov falling leaves, pumpkin + latte corner; exports LeafWreath
   NoteWidget.tsx     # Instagram-style note bubble: one note per user, persists until deleted,
                      # owner can add/edit/delete inline, non-owner sees read-only
 
@@ -49,7 +50,8 @@ lib/
                      # getElapsedSeconds, formatSleepTimestamp, formatDateLabel, todayString
   cardMatch.ts       # "same card" matching (normalized title + fuzzy description),
                      # topCommonCards (quick-pick ranking), findCardStyle
-  season.ts          # detectSeason / applySeason / isHalloween (stamps <html data-season>)
+  season.ts          # detectSeason / applySeason / isHalloween / isAutumn (stamps <html data-season>),
+                     # getPaletteSeason / paletteSeasonForDate (card-color seasons)
   cardStyles.ts      # SEASON_PALETTES (seasonal card colors), resolveColor, getCardLook for TaskCard
 
 types/
@@ -103,6 +105,9 @@ alter publication supabase_realtime add table tasks;
 
 ## Key design decisions
 
+### Tabs (removed)
+Tabs and due dates were removed from the UI. The `tabs` table and the `tasks.tab_id` / `due_date` columns still exist (Omar's old class tabs are kept), but the app only reads and writes main-list tasks (`tab_id is null`) and always inserts `tab_id: null, due_date: null`.
+
 ### Identity
 No auth. On first visit a modal asks "Who are you?" — Riham or Omar. Choice saved to `sessionStorage` key `timor_user` (session-only, not persisted across browser restarts). Either user can view both panels but can only interact with their own side.
 
@@ -140,6 +145,17 @@ Max note length is 80 characters (enforced in `NoteWidget`).
 
 ### Landing page night mode
 When **both** users' `sleep_status` is true, the "Who are you?" screen (`IdentityModal` in `app/page.tsx`) switches to night mode, matching a sleeping panel: a dark rose→indigo→sky gradient, the shared `STARS_STYLE` overlay (`lib/nightSky.ts`), a dark glass card, a moon icon and a "both asleep" pill. In October it also gets the harvest moon and the night bats from `HalloweenDecor`. It's purely visual and reacts live to the sleep pills via `useSleepUsers`. Sleep status itself is never changed automatically.
+
+### Seasonal theme: Harvest (September + November)
+- `detectSeason` returns `'autumn'` for September and November (October stays Halloween). Preview it with `?season=autumn`.
+- **Colors:** `html[data-season="autumn"]` in `globals.css` remaps rose to a berry scale built around #8D2830 (pinned at shade 500, Rihamie) and sky to a slate-blue scale around #335C67 (Omarie), plus a warm cream `--background` (#FFF4E6).
+- **Font:** Cinzel (`--font-autumn`, a free Gilmore Girls–style lookalike) for the logo (`seasonal-heading` + `logo-or`).
+- **Extras:**
+  - `AutumnDecor`: falling 🍁🍂 leaves (`leaf-fall` keyframes).
+  - `LeafWreath`: an open-bottom wreath around the landing logo.
+  - The heart becomes 🍂.
+  - `ProgressBar`'s fill becomes a pumpkin: orange ribbed skin plus a CSS stem and leaf riding the leading edge (emerald still wins at the goal), with a 🥧 goal marker.
+  - The empty list reads "Grab a latte and add a task 🍂".
 
 ### Seasonal theme (Halloween)
 - **When:** all of October, automatically (`detectSeason` in `lib/season.ts`). `app/page.tsx` calls `applySeason` in its hydration effect before the first render, which stamps `<html data-season="halloween">`. Preview any time with `?season=halloween`, or force it off with `?season=off`; the choice sticks for the tab via sessionStorage.

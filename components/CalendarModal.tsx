@@ -12,12 +12,10 @@ interface Props {
   onSelectDate: (date: string) => void
   onClose: () => void
   panelUserId?: UserId
-  tabId?: string | null
   minDate?: string
 }
 
 type MainDayProgress = { riham: number; omar: number }
-type TabDayProgress = { hasTasks: boolean; allComplete: boolean }
 
 const GOAL_SECONDS = GOAL_MINUTES * 60
 const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
@@ -28,13 +26,7 @@ function goalDotColor(seconds: number): string {
   return 'bg-stone-200'
 }
 
-function tabDotColor(progress: TabDayProgress | undefined): string {
-  if (!progress || !progress.hasTasks) return 'bg-stone-200'
-  return progress.allComplete ? 'bg-emerald-400' : 'bg-amber-400'
-}
-
-export default function CalendarModal({ selectedDate, onSelectDate, onClose, panelUserId, tabId, minDate }: Props) {
-  const isTabMode = tabId !== undefined && tabId !== null
+export default function CalendarModal({ selectedDate, onSelectDate, onClose, panelUserId, minDate }: Props) {
   const today = todayString()
   const initialYear = parseInt(selectedDate.slice(0, 4))
   const initialMonth = parseInt(selectedDate.slice(5, 7)) - 1
@@ -42,7 +34,6 @@ export default function CalendarModal({ selectedDate, onSelectDate, onClose, pan
   const [viewYear, setViewYear] = useState(initialYear)
   const [viewMonth, setViewMonth] = useState(initialMonth)
   const [mainProgress, setMainProgress] = useState<Record<string, MainDayProgress>>({})
-  const [tabProgress, setTabProgress] = useState<Record<string, TabDayProgress>>({})
   const backdropRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -51,27 +42,14 @@ export default function CalendarModal({ selectedDate, onSelectDate, onClose, pan
     const lastDay = new Date(viewYear, viewMonth + 1, 0).getDate()
     const monthEnd = `${viewYear}-${mm}-${String(lastDay).padStart(2, '0')}`
 
-    let query = supabase
+    supabase
       .from('tasks')
-      .select('date, user_id, is_complete, actual_seconds, estimated_minutes, tab_id')
+      .select('date, user_id, is_complete, actual_seconds, estimated_minutes')
       .gte('date', monthStart)
       .lte('date', monthEnd)
-
-    query = isTabMode
-      ? query.eq('user_id', panelUserId!).eq('tab_id', tabId as string)
-      : query.is('tab_id', null)
-
-    query.then(({ data }) => {
-      if (!data) return
-      if (isTabMode) {
-        const result: Record<string, TabDayProgress> = {}
-        for (const t of data) {
-          if (!result[t.date]) result[t.date] = { hasTasks: false, allComplete: true }
-          result[t.date].hasTasks = true
-          if (!t.is_complete) result[t.date].allComplete = false
-        }
-        setTabProgress(result)
-      } else {
+      .is('tab_id', null)
+      .then(({ data }) => {
+        if (!data) return
         const result: Record<string, MainDayProgress> = {}
         for (const t of data) {
           if (!result[t.date]) result[t.date] = { riham: 0, omar: 0 }
@@ -82,9 +60,8 @@ export default function CalendarModal({ selectedDate, onSelectDate, onClose, pan
           else result[t.date].omar += contribution
         }
         setMainProgress(result)
-      }
-    })
-  }, [viewYear, viewMonth, isTabMode, panelUserId, tabId])
+      })
+  }, [viewYear, viewMonth])
 
   function prevMonth() {
     if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11) }
@@ -144,7 +121,7 @@ export default function CalendarModal({ selectedDate, onSelectDate, onClose, pan
 
         <div className="p-3">
           {/* Legend */}
-          {!isTabMode && (
+          {(
             <div className="flex items-center justify-end gap-3 mb-2 px-1">
               <span className="flex items-center gap-1 text-xs text-stone-400">
                 <span className="w-2 h-2 rounded-full bg-rose-400 inline-block" /> Rihamie
@@ -173,7 +150,6 @@ export default function CalendarModal({ selectedDate, onSelectDate, onClose, pan
               const isToday = dateStr === today
               const isDisabled = !!minDate && dateStr < minDate
               const mainDay = mainProgress[dateStr]
-              const tabDay = tabProgress[dateStr]
 
               return (
                 <button
@@ -196,9 +172,7 @@ export default function CalendarModal({ selectedDate, onSelectDate, onClose, pan
                     {day}
                   </span>
                   <div className="flex gap-0.5">
-                    {isTabMode ? (
-                      <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'opacity-80 ' : ''}${tabDotColor(tabDay)}`} />
-                    ) : (
+                    {(
                       <>
                         <span className={`w-1.5 h-1.5 rounded-full ${
                           isSelected ? 'opacity-80 ' : ''
@@ -217,20 +191,7 @@ export default function CalendarModal({ selectedDate, onSelectDate, onClose, pan
 
         {/* Color legend */}
         <div className="flex items-center justify-center gap-4 px-4 py-2.5 border-t border-stone-100 bg-stone-50">
-          {isTabMode ? (
-            <>
-              <span className="flex items-center gap-1.5 text-xs text-stone-400">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" /> all done
-              </span>
-              <span className="flex items-center gap-1.5 text-xs text-stone-400">
-                <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> in progress
-              </span>
-              <span className="flex items-center gap-1.5 text-xs text-stone-400">
-                <span className="w-2 h-2 rounded-full bg-stone-200 inline-block" /> none
-              </span>
-            </>
-          ) : (
-            <>
+          <>
               <span className="flex items-center gap-1.5 text-xs text-stone-400">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" /> 7h goal met
               </span>
@@ -241,7 +202,6 @@ export default function CalendarModal({ selectedDate, onSelectDate, onClose, pan
                 <span className="w-2 h-2 rounded-full bg-stone-200 inline-block" /> none
               </span>
             </>
-          )}
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Henny_Penny } from "next/font/google";
+import { Geist, Geist_Mono, Cinzel, Henny_Penny } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -19,6 +19,13 @@ const spooky = Henny_Penny({
   subsets: ["latin"],
 });
 
+// Autumn logo font (Cinzel — free lookalike of the Gilmore Girls title font) — only applied while html[data-season="autumn"] (see globals.css)
+const autumn = Cinzel({
+  variable: "--font-autumn",
+  weight: ["600", "700"],
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
   title: "timOR",
   description: "Riham & Omar's daily accountability tracker",
@@ -32,7 +39,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${spooky.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${spooky.variable} ${autumn.variable} h-full antialiased`}
     >
       <body className="h-full">{children}</body>
     </html>

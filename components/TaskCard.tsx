@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Play, Square, CheckCircle2, Clock, Pencil, Copy, Trash2, GripVertical, CalendarClock } from 'lucide-react'
+import { Play, Square, CheckCircle2, Clock, Pencil, Copy, Trash2, GripVertical } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { CardStyle, Task, UserId } from '@/types'
-import { minutesToDisplay, secondsToDisplay, getElapsedSeconds, formatDateLabel, completedCreditSeconds } from '@/lib/utils'
+import { minutesToDisplay, secondsToDisplay, getElapsedSeconds, completedCreditSeconds } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { getCardLook } from '@/lib/cardStyles'
 import type { PaletteSeason } from '@/lib/season'
@@ -142,18 +142,6 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
           {task.description && (
             <p className={`mt-0.5 text-xs leading-relaxed ${isSleeping ? 'text-slate-400' : 'text-stone-500'}`}>{task.description}</p>
           )}
-          {task.tab_id !== null && (
-            <div className="mt-2">
-              <ProgressBar
-                estimatedMinutes={task.estimated_minutes}
-                actualSeconds={barActualSeconds}
-                isSleeping={isSleeping}
-                isRiham={isRiham}
-                goalMinutes={task.estimated_minutes}
-                compact
-              />
-            </div>
-          )}
           <div className={`mt-2 flex items-center gap-3 text-xs ${isSleeping ? 'text-slate-400' : 'text-stone-500'}`}>
             <span className="flex items-center gap-1">
               <Clock size={11} />
@@ -164,12 +152,6 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
                 {isRunning
                   ? `${secondsToDisplay(totalActualSeconds)} running`
                   : `${secondsToDisplay(totalActualSeconds)} tracked`}
-              </span>
-            )}
-            {task.due_date && (
-              <span className="flex items-center gap-1">
-                <CalendarClock size={11} />
-                Due {formatDateLabel(task.due_date)}
               </span>
             )}
           </div>

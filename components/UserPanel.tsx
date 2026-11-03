@@ -5,20 +5,19 @@ import { Plus, ChevronLeft, ChevronRight, Calendar, Sparkles } from 'lucide-reac
 import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { supabase } from '@/lib/supabase'
-import { CardStyle, Tab, Task, User, UserId, UserNote } from '@/types'
-import { todayString, formatDateLabel, getElapsedSeconds, endOfDayMs, secondsToDisplay, minutesToDisplay, isTabActiveOnDate, isTaskVisibleOnDate, completedCreditSeconds } from '@/lib/utils'
+import { CardStyle, Task, User, UserId, UserNote } from '@/types'
+import { todayString, formatDateLabel, getElapsedSeconds, endOfDayMs, secondsToDisplay, minutesToDisplay, isTaskVisibleOnDate, completedCreditSeconds } from '@/lib/utils'
 import TaskCard from './TaskCard'
 import ProgressBar from './ProgressBar'
 import AddTaskModal from './AddTaskModal'
 import { findCardStyle } from '@/lib/cardMatch'
-import { isHalloween, paletteSeasonForDate } from '@/lib/season'
+import { isAutumn, isHalloween, paletteSeasonForDate } from '@/lib/season'
 import HalloweenDecor from './HalloweenDecor'
+import AutumnDecor from './AutumnDecor'
 import { STARS_STYLE } from '@/lib/nightSky'
 import CalendarModal from './CalendarModal'
 import NoteWidget from './NoteWidget'
 import SpeccialsModal from './SpeccialsModal'
-import TabStrip from './TabStrip'
-import TabModal from './TabModal'
 
 interface Props {
   panelUserId: UserId
@@ -46,13 +45,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
   const [copyToast, setCopyToast] = useState<string | null>(null)
   const [now, setNow] = useState(Date.now())
   const [fetchKey, setFetchKey] = useState(0)
-  const [tabs, setTabs] = useState<Tab[]>([])
   const [cardStyles, setCardStyles] = useState<CardStyle[]>([])
-  const [activeTabId, setActiveTabId] = useState<string | null>(null)
-  const [showCreateTab, setShowCreateTab] = useState(false)
-  const [editingTab, setEditingTab] = useState<Tab | null>(null)
-  const [confirmingDeleteTab, setConfirmingDeleteTab] = useState<Tab | null>(null)
-  const [schedulingEndTab, setSchedulingEndTab] = useState<Tab | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -120,42 +113,23 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
       })
   }, [panelUserId])
 
-  // Fetch tasks — includes tasks whose due_date keeps them visible on this
-  // date even though they started on an earlier day (tab tasks only; Main
-  // tasks never have a due_date, so this collapses to an exact date match).
+  // Fetch tasks for the selected day. Tabs were removed; old tab tasks (tab_id set)
+  // stay in the database but are never shown.
   useEffect(() => {
-    let query = supabase.from('tasks').select('*').eq('user_id', panelUserId)
-    query = activeTabId === null ? query.is('tab_id', null) : query.eq('tab_id', activeTabId)
-    query = query
-      .lte('date', selectedDate)
-      .or(`due_date.gte.${selectedDate},and(due_date.is.null,date.eq.${selectedDate})`)
-    query
+    supabase.from('tasks').select('*').eq('user_id', panelUserId)
+      .is('tab_id', null)
+      .eq('date', selectedDate)
       .order('is_complete', { ascending: true })
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true })
       .then(({ data, error }) => { if (!error && data) setTasks(data as Task[]) })
-  }, [panelUserId, selectedDate, activeTabId, fetchKey])
-
-  // Fetch tabs
-  useEffect(() => {
-    supabase.from('tabs').select('*').eq('user_id', panelUserId).order('created_at', { ascending: true })
-      .then(({ data, error }) => { if (!error && data) setTabs(data as Tab[]) })
-  }, [panelUserId, fetchKey])
+  }, [panelUserId, selectedDate, fetchKey])
 
   // Fetch saved card looks
   useEffect(() => {
     supabase.from('card_styles').select('*').eq('user_id', panelUserId)
       .then(({ data, error }) => { if (!error && data) setCardStyles(data as CardStyle[]) })
   }, [panelUserId, fetchKey])
-
-  // If the currently-active tab isn't relevant for the date now being viewed
-  // (navigated outside its lifespan), fall back to Main rather than showing a
-  // stale/invisible selection.
-  useEffect(() => {
-    if (activeTabId === null) return
-    const tab = tabs.find(t => t.id === activeTabId)
-    if (!tab || !isTabActiveOnDate(tab, selectedDate)) setActiveTabId(null)
-  }, [selectedDate, tabs, activeTabId])
 
   // Fetch user row (sleep status)
   useEffect(() => {
@@ -177,14 +151,14 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
   // Real-time: tasks
   useEffect(() => {
     const channel = supabase
-      .channel(`tasks-${panelUserId}-${selectedDate}-${activeTabId ?? 'main'}`)
+      .channel(`tasks-${panelUserId}-${selectedDate}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${panelUserId}` },
         (payload) => {
           if (payload.eventType === 'INSERT') {
             const t = payload.new as Task
-            if (t.tab_id === activeTabId && isTaskVisibleOnDate(t, selectedDate)) setTasks(prev => [...prev, t])
+            if (t.tab_id === null && isTaskVisibleOnDate(t, selectedDate)) setTasks(prev => [...prev, t])
           } else if (payload.eventType === 'UPDATE') {
             setTasks(prev => prev.map(t => t.id === payload.new.id ? (payload.new as Task) : t))
           } else if (payload.eventType === 'DELETE') {
@@ -194,28 +168,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
       )
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [panelUserId, selectedDate, activeTabId])
-
-  // Real-time: tabs
-  useEffect(() => {
-    const channel = supabase
-      .channel(`tabs-${panelUserId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'tabs', filter: `user_id=eq.${panelUserId}` },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setTabs(prev => [...prev, payload.new as Tab])
-          } else if (payload.eventType === 'UPDATE') {
-            setTabs(prev => prev.map(t => t.id === payload.new.id ? (payload.new as Tab) : t))
-          } else if (payload.eventType === 'DELETE') {
-            setTabs(prev => prev.filter(t => t.id !== (payload.old as Tab).id))
-          }
-        }
-      )
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [panelUserId])
+  }, [panelUserId, selectedDate])
 
   // Real-time: card looks
   useEffect(() => {
@@ -317,7 +270,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
     await supabase.from('tasks').insert({
       user_id: panelUserId,
       date: dateStr,
-      tab_id: task.tab_id,
+      tab_id: null,
       due_date: null,
       title: task.title,
       description: task.description,
@@ -329,31 +282,6 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
     })
     setCopyToast(`Copied to ${formatDateLabel(dateStr)}`)
     setTimeout(() => setCopyToast(null), 2500)
-  }
-
-  async function handleEndTerm(tab: Tab, dateStr: string) {
-    // Only finalize running timers when the term is ending now or in the past —
-    // a future scheduled end date leaves the tab fully active until then.
-    if (dateStr <= todayString()) {
-      const { data: running } = await supabase.from('tasks').select('*').eq('tab_id', tab.id).not('timer_started_at', 'is', null)
-      if (running && running.length > 0) {
-        await Promise.all((running as Task[]).map(t => {
-          const elapsed = Math.floor((Date.now() - new Date(t.timer_started_at!).getTime()) / 1000)
-          return supabase.from('tasks').update({ timer_started_at: null, actual_seconds: t.actual_seconds + elapsed }).eq('id', t.id)
-        }))
-      }
-    }
-    await supabase.from('tabs').update({ ended_at: dateStr }).eq('id', tab.id)
-  }
-
-  async function handleRevive(tab: Tab) {
-    await supabase.from('tabs').update({ ended_at: null }).eq('id', tab.id)
-  }
-
-  async function handleDeleteTab(tab: Tab) {
-    if (activeTabId === tab.id) setActiveTabId(null)
-    setTabs(prev => prev.filter(t => t.id !== tab.id))
-    await supabase.from('tabs').delete().eq('id', tab.id)
   }
 
   async function handleDragEnd(event: DragEndEvent) {
@@ -459,6 +387,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
 
       {/* Seasonal decorations (bats, ghosts, cobwebs) — renders nothing out of season */}
       <HalloweenDecor variant="panel" isSleeping={isSleeping} />
+      <AutumnDecor variant="panel" isSleeping={isSleeping} />
 
       {/* Panel header */}
       <div className={`relative z-10 px-5 pt-5 pb-4 border-b space-y-3 ${isSleeping ? 'border-slate-700/50' : 'border-stone-100'}`}>
@@ -479,23 +408,6 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
             </button>
           </div>
         </div>
-
-        {/* Tabs */}
-        <TabStrip
-          userId={panelUserId}
-          currentUser={currentUser}
-          isSleeping={isSleeping}
-          tabs={tabs}
-          selectedDate={selectedDate}
-          activeTabId={activeTabId}
-          onSelectTab={setActiveTabId}
-          onCreateTab={() => setShowCreateTab(true)}
-          onRenameTab={(tab) => setEditingTab(tab)}
-          onEndTermNow={(tab) => handleEndTerm(tab, todayString())}
-          onScheduleEnd={(tab) => setSchedulingEndTab(tab)}
-          onRevive={handleRevive}
-          onRequestDelete={(tab) => setConfirmingDeleteTab(tab)}
-        />
 
         {/* Note widget */}
         {user && (
@@ -529,13 +441,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
           </button>
         </div>
 
-        {activeTabId === null ? (
-          <ProgressBar estimatedMinutes={estimatedMinutes} actualSeconds={actualSeconds} isSleeping={isSleeping} isRiham={isRiham} />
-        ) : (
-          <p className={`text-xs ${isSleeping ? 'text-slate-400' : 'text-stone-500'}`}>
-            {secondsToDisplay(actualSeconds)} tracked · {minutesToDisplay(estimatedMinutes)} estimated
-          </p>
-        )}
+        <ProgressBar estimatedMinutes={estimatedMinutes} actualSeconds={actualSeconds} isSleeping={isSleeping} isRiham={isRiham} />
       </div>
 
       {/* Task list */}
@@ -543,8 +449,9 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
         {tasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             {isHalloween() && <span className="mb-2 text-3xl animate-[ghost-float_5s_ease-in-out_infinite]">👻</span>}
+            {isAutumn() && <span className="mb-2 text-3xl animate-[ghost-float_5s_ease-in-out_infinite]">☕</span>}
             <p className={`text-sm ${isSleeping ? 'text-slate-400' : 'text-stone-400'}`}>
-              {isReadOnly ? 'No tasks recorded for this day.' : 'No tasks yet — add one to get started!'}
+              {isReadOnly ? 'No tasks recorded for this day.' : isAutumn() ? 'Grab a latte and add a task 🍂' : 'No tasks yet — add one to get started!'}
             </p>
           </div>
         ) : (
@@ -627,7 +534,6 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
         <AddTaskModal
           userId={panelUserId}
           date={selectedDate}
-          tabId={activeTabId}
           sortOrder={tasks.filter(t => !t.is_complete).length}
           onClose={() => setShowAddModal(false)}
           onTaskAdded={() => setFetchKey(k => k + 1)}
@@ -639,7 +545,6 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
         <CalendarModal
           selectedDate={selectedDate}
           panelUserId={panelUserId}
-          tabId={activeTabId}
           onSelectDate={(date) => { onDateChange(date); setShowCalendar(false) }}
           onClose={() => setShowCalendar(false)}
         />
@@ -650,20 +555,8 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
         <CalendarModal
           selectedDate={selectedDate}
           panelUserId={panelUserId}
-          tabId={copyingTask.tab_id}
           onSelectDate={(dateStr) => handleCopyTaskToDate(copyingTask, dateStr)}
           onClose={() => setCopyingTask(null)}
-        />
-      )}
-
-      {/* Schedule / change tab end date */}
-      {schedulingEndTab && (
-        <CalendarModal
-          selectedDate={schedulingEndTab.ended_at ? schedulingEndTab.ended_at.slice(0, 10) : todayString()}
-          panelUserId={panelUserId}
-          tabId={schedulingEndTab.id}
-          onSelectDate={(dateStr) => { handleEndTerm(schedulingEndTab, dateStr); setSchedulingEndTab(null) }}
-          onClose={() => setSchedulingEndTab(null)}
         />
       )}
 
@@ -696,39 +589,6 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
         </div>
       )}
 
-      {/* Create tab modal */}
-      {showCreateTab && (
-        <TabModal userId={panelUserId} onClose={() => setShowCreateTab(false)} />
-      )}
-
-      {/* Rename tab modal */}
-      {editingTab && (
-        <TabModal userId={panelUserId} existingTab={editingTab} onClose={() => setEditingTab(null)} />
-      )}
-
-      {/* Delete tab confirmation */}
-      {confirmingDeleteTab && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl p-5 space-y-4">
-            <h2 className="font-semibold text-stone-800">Delete "{confirmingDeleteTab.name}"?</h2>
-            <p className="text-sm text-stone-500">This permanently deletes the tab and all of its tasks. This can't be undone.</p>
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={() => setConfirmingDeleteTab(null)}
-                className="flex-1 rounded-lg border border-stone-200 py-2 text-sm font-medium text-stone-600 hover:bg-stone-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => { handleDeleteTab(confirmingDeleteTab); setConfirmingDeleteTab(null) }}
-                className="flex-1 rounded-lg py-2 text-sm font-semibold bg-red-500 hover:bg-red-600 text-white transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
