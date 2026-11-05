@@ -65,8 +65,8 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
       ? 'from-slate-950 via-indigo-950 to-rose-950'
       : 'from-slate-950 via-indigo-950 to-sky-950'
     : isRiham
-      ? 'from-rose-50 to-white'
-      : 'from-sky-50 to-white'
+      ? 'seasonal-panel from-rose-50 to-white'
+      : 'seasonal-panel from-sky-50 to-white'
 
   const addBtnClass = isSleeping
     ? isRiham

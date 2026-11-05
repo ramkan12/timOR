@@ -40,12 +40,12 @@ function IdentityModal({ onSelect, users, now, onToggle }: IdentityModalProps) {
   ]
 
   return (
-    <div className={`fixed inset-0 z-50 overflow-y-auto bg-gradient-to-br ${asleep ? 'from-rose-950 via-indigo-950 to-sky-950' : 'from-rose-50 via-stone-50 to-sky-50'}`}>
+    <div className={`fixed inset-0 z-50 overflow-y-auto bg-gradient-to-br ${asleep ? 'from-rose-950 via-indigo-950 to-sky-950' : 'seasonal-backdrop from-rose-50 via-stone-50 to-sky-50'}`}>
       {/* Drifting color blobs + faint dot texture (+ stars at night) */}
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className={`absolute -top-32 -left-24 h-96 w-96 rounded-full blur-3xl animate-[blob-float_18s_ease-in-out_infinite] ${asleep ? 'bg-rose-500/15' : 'bg-rose-200/50'}`} />
-        <div className={`absolute -bottom-40 -right-24 h-[28rem] w-[28rem] rounded-full blur-3xl animate-[blob-float_22s_ease-in-out_infinite_reverse] ${asleep ? 'bg-sky-500/15' : 'bg-sky-200/50'}`} />
-        <div className={`absolute top-1/3 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full blur-3xl ${asleep ? 'bg-indigo-400/10' : 'bg-amber-100/40'}`} />
+        <div className={`landing-blob absolute -top-32 -left-24 h-96 w-96 rounded-full blur-3xl animate-[blob-float_18s_ease-in-out_infinite] ${asleep ? 'bg-rose-500/15' : 'bg-rose-200/50'}`} />
+        <div className={`landing-blob absolute -bottom-40 -right-24 h-[28rem] w-[28rem] rounded-full blur-3xl animate-[blob-float_22s_ease-in-out_infinite_reverse] ${asleep ? 'bg-sky-500/15' : 'bg-sky-200/50'}`} />
+        <div className={`landing-blob absolute top-1/3 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full blur-3xl ${asleep ? 'bg-indigo-400/10' : 'bg-amber-100/40'}`} />
         {asleep
           ? <div className="absolute inset-0" style={STARS_STYLE} />
           : <div className="absolute inset-0 bg-[radial-gradient(rgb(120_113_108/0.12)_1px,transparent_1px)] [background-size:22px_22px]" />}
@@ -54,7 +54,7 @@ function IdentityModal({ onSelect, users, now, onToggle }: IdentityModalProps) {
       <AutumnDecor variant="landing" isSleeping={asleep} />
 
       <div className="relative flex min-h-full items-center justify-center px-4 py-10">
-        <div className={`relative w-full max-w-md rounded-3xl px-6 py-10 sm:px-10 text-center shadow-2xl ring-1 backdrop-blur-xl transition-colors duration-700 animate-[rise-in_0.6s_ease-out] ${asleep ? 'bg-slate-900/55 shadow-black/40 ring-white/10' : 'bg-white/70 shadow-stone-300/40 ring-white/80'}`}>
+        <div className={`landing-card relative w-full max-w-md rounded-3xl px-6 py-10 sm:px-10 text-center shadow-2xl ring-1 backdrop-blur-xl transition-colors duration-700 animate-[rise-in_0.6s_ease-out] ${asleep ? 'bg-slate-900/55 shadow-black/40 ring-white/10' : 'bg-white/70 shadow-stone-300/40 ring-white/80'}`}>
           <CornerWebs isSleeping={asleep} />
           {/* Logo */}
           <div className="relative space-y-3">
@@ -143,9 +143,9 @@ export default function Home() {
   if (!hydrated) return null
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-background">
+    <div className="dashboard-shell flex flex-col h-screen overflow-hidden bg-background">
       {/* Top bar */}
-      <header className="flex-shrink-0 flex items-center justify-between gap-3 px-5 py-3 border-b border-stone-200 bg-white">
+      <header className="seasonal-header flex-shrink-0 flex items-center justify-between gap-3 px-5 py-3 border-b border-stone-200 bg-white">
         <button
           onClick={() => window.location.reload()}
           className="flex items-center gap-3 px-2 py-1 rounded-lg hover:bg-stone-100 active:bg-stone-200 transition-colors flex-1"
@@ -169,13 +169,13 @@ export default function Home() {
         <div className="flex-1 flex items-center justify-end gap-2">
           {currentUser && (
             <>
-              <span className={`text-xs font-semibold hidden sm:inline ${currentUser === 'riham' ? 'text-rose-600' : 'text-sky-600'}`}>
+              <span className={`header-name text-xs font-semibold hidden sm:inline ${currentUser === 'riham' ? 'text-rose-600' : 'text-sky-600'}`}>
                 {currentUser === 'riham' ? 'Rihamie' : 'Omarie'}
               </span>
               <button
                 onClick={() => { sessionStorage.removeItem('timor_user'); setCurrentUser(null) }}
                 title="Exit to main menu"
-                className="p-1.5 rounded-lg text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-colors"
+                className="header-icon p-1.5 rounded-lg text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-colors"
               >
                 <LogOut size={16} />
               </button>

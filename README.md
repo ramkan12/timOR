@@ -36,6 +36,7 @@ The app dresses itself up automatically. There's nothing to turn on.
 | When | Theme |
 |---|---|
 | **September & November** | 🍂 **Harvest**: warm cream, berry red (#8D2830) & slate blue (#335C67), a Gilmore Girls–style engraved logo (Cinzel), falling leaves, a leaf wreath around the logo, and a pumpkin progress bar (ribbed orange with a little stem) with a 🥧 that "bakes" at 7 hours |
+| **Dec 1 – Mar 20** | ❄️ **Winter**: the dashboard and landing page sit on a Pine (#27363F) frame with cool parchment panels |
 | **October** | 🎃 **Halloween**: witch purple & pumpkin orange, a spooky logo, bats, ghosts, cobwebs, a harvest moon at night, candy-corn progress bars with a jack-o-lantern that lights up at 7 hours, and candy confetti |
 
 **Card colors also change with the seasons.** The color choices in Edit Task are a palette for the season of the day you're viewing. A colored card keeps its spot in the palette ("color #2"), so it switches to the new season's color #2 automatically.

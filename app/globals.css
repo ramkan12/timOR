@@ -136,6 +136,37 @@ html[data-season="autumn"] .logo-or {
   letter-spacing: 0.02em;
 }
 
+/* Seasonal frame color: Spiced Maroon (#4E2028) in autumn, Pine (#27363F) in winter.
+   Both are deliberately darker/dustier than the users' accents so those still stand out.
+   Used behind the landing card (awake only) and as the dashboard frame and dividers. */
+html[data-season="autumn"] { --frame: #4E2028; --parchment-top: #FFF8F0; --parchment-base: #FFF4E6; --glow: rgb(217 119 6 / 0.14); }
+html[data-season="winter"] { --frame: #27363F; --parchment-top: #FAFBFC; --parchment-base: #F1F4F7; --glow: rgb(148 163 184 / 0.18); }
+
+:is(html[data-season="autumn"], html[data-season="winter"]) .seasonal-backdrop {
+  background: var(--frame);
+}
+:is(html[data-season="autumn"], html[data-season="winter"]) .seasonal-backdrop .landing-card {
+  background: color-mix(in srgb, var(--parchment-top) 96%, transparent); /* near-solid so it reads on the dark frame */
+}
+:is(html[data-season="autumn"], html[data-season="winter"]) .seasonal-backdrop .landing-blob {
+  background: var(--glow);
+}
+/* Dashboard: the page sits on a frame-colored "mat", panels turn soft parchment fading into a
+   whisper of the frame color. Header and panel dividers keep their normal light lines. */
+:is(html[data-season="autumn"], html[data-season="winter"]) .dashboard-shell {
+  background: var(--frame);
+  padding: 10px;
+}
+:is(html[data-season="autumn"], html[data-season="winter"]) .dashboard-shell > header {
+  border-radius: 14px 14px 0 0;
+}
+:is(html[data-season="autumn"], html[data-season="winter"]) .dashboard-shell > main {
+  border-radius: 0 0 14px 14px;
+}
+:is(html[data-season="autumn"], html[data-season="winter"]) .seasonal-panel {
+  background-image: linear-gradient(to bottom, var(--parchment-top), color-mix(in srgb, var(--frame) 7%, var(--parchment-base)));
+}
+
 @keyframes leaf-fall {
   0%   { transform: translate(0, -10vh) rotate(0deg); opacity: 0; }
   10%  { opacity: 0.9; }

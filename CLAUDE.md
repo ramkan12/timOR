@@ -154,8 +154,16 @@ When **both** users' `sleep_status` is true, the "Who are you?" screen (`Identit
   - `AutumnDecor`: falling 🍁🍂 leaves (`leaf-fall` keyframes).
   - `LeafWreath`: an open-bottom wreath around the landing logo.
   - The heart becomes 🍂.
+  - **Spiced Maroon #4E2028** (deliberately darker/dustier than Rihamie's #8D2830):
+    - **Landing:** fills the backdrop (`.seasonal-backdrop`, awake only). On it the card goes near-solid cream (`.landing-card`) and the glows turn warm amber (`.landing-blob`).
+    - **Dashboard:** the page sits on a 10px maroon frame (`.dashboard-shell`, rounded header/main corners). Panels turn warm parchment fading into ~7% maroon (`.seasonal-panel`, awake only), The header and dividers keep their normal light lines.
   - `ProgressBar`'s fill becomes a pumpkin: orange ribbed skin plus a CSS stem and leaf riding the leading edge (emerald still wins at the goal), with a 🥧 goal marker.
   - The empty list reads "Grab a latte and add a task 🍂".
+
+### Seasonal theme: Winter frame (Dec 1 – Mar 20)
+- `detectSeason` returns `'winter'` from Dec 1 to Mar 20 (preview with `?season=winter`). The winter *card colors* still start Dec 21.
+- It reuses the autumn frame styling through CSS variables in `globals.css` (`--frame`, `--parchment-top`, `--parchment-base`, `--glow`). The frame color is **Pine #27363F** instead of Spiced Maroon, with cool parchment panels and slate glows.
+- It has no other decorations or font changes, and the identity colors stay rose/sky.
 
 ### Seasonal theme (Halloween)
 - **When:** all of October, automatically (`detectSeason` in `lib/season.ts`). `app/page.tsx` calls `applySeason` in its hydration effect before the first render, which stamps `<html data-season="halloween">`. Preview any time with `?season=halloween`, or force it off with `?season=off`; the choice sticks for the tab via sessionStorage.

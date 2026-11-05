@@ -2,24 +2,28 @@
 // startup (see app/page.tsx); globals.css remaps colors from it and components read it
 // through isHalloween().
 
-export type Season = 'halloween' | 'autumn' | null
+export type Season = 'halloween' | 'autumn' | 'winter' | null
 
 const OVERRIDE_KEY = 'timor_season'
 
 // Halloween runs all of October; the cozy autumn "Harvest" theme runs September and
-// November. `?season=halloween|autumn|off` overrides the calendar for previews and
-// sticks for the rest of the tab session.
+// November; the winter frame (Pine) runs Dec 1 – Mar 20.
+// `?season=halloween|autumn|winter|off` overrides the calendar for previews and sticks
+// for the rest of the tab session.
 export function detectSeason(): Season {
   const param = new URLSearchParams(window.location.search).get('season')
   try {
-    if (param === 'halloween' || param === 'autumn' || param === 'off') sessionStorage.setItem(OVERRIDE_KEY, param)
+    if (param === 'halloween' || param === 'autumn' || param === 'winter' || param === 'off') sessionStorage.setItem(OVERRIDE_KEY, param)
     const override = sessionStorage.getItem(OVERRIDE_KEY)
-    if (override === 'halloween' || override === 'autumn') return override
+    if (override === 'halloween' || override === 'autumn' || override === 'winter') return override
     if (override === 'off') return null
   } catch {}
   const month = new Date().getMonth()
   if (month === 9) return 'halloween'
   if (month === 8 || month === 10) return 'autumn'
+  const now = new Date()
+  const md = (now.getMonth() + 1) * 100 + now.getDate()
+  if (md >= 1201 || md < 321) return 'winter'
   return null
 }
 
