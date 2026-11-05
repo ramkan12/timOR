@@ -8,36 +8,54 @@ export interface PaletteColor {
 }
 
 // Card colors rotate with the seasons (dates in getPaletteSeason). Saved looks store a
-// slot ('slot-2'), not a hex, so on the solstice every "fall #3" card becomes "winter #3".
+// slot ('slot-2'), not a hex. The same index is the same color family in every season,
+// so on the solstice a fall Rust card becomes winter Berry, Amber becomes Frosted Gold, etc.
+// Seasons without a color in a family use their light neutral in that slot.
+//
+//   #  family            fall              winter         spring              summer
+//   0  red               Rust              Berry          Pastel Watermelon   Raspberry
+//   1  orange / brown    Burnt Orange      Branch         Misty Rose          Topaz
+//   2  gold / yellow     Amber             Frosted Gold   Soft Muted Yellow   Deep Champagne
+//   3  green / olive     Olive Gold        Muddy Olive    Spring Bud          Medium Sea Green
+//   4  teal              Deep Teal         Pine           Pale Turquoise      Dark Sky Blue
+//   5  blue              Midnight Indigo   Mist           Periwinkle Mist     Antique White (neutral)
+//   6  accent            Plum              Snowflake (n)  Light Yellow (n)    Tulip
 export const SEASON_PALETTES: Record<PaletteSeason, PaletteColor[]> = {
   fall: [
-    { name: '#92780A', hex: '#92780A' },
-    { name: '#BF7F04', hex: '#BF7F04' },
-    { name: '#BF5B05', hex: '#BF5B05' },
-    { name: '#8C1C04', hex: '#8C1C04' },
-    { name: '#3F0E00', hex: '#3F0E00' },
+    { name: 'Rust', hex: '#8C1C04' },            // 0 red
+    { name: 'Burnt Orange', hex: '#BF5B05' },    // 1 orange
+    { name: 'Amber', hex: '#BF7F04' },           // 2 gold
+    { name: 'Olive Gold', hex: '#92780A' },      // 3 green
+    { name: 'Deep Teal', hex: '#0D5C68' },       // 4 teal
+    { name: 'Midnight Indigo', hex: '#283D5E' }, // 5 blue
+    { name: 'Plum', hex: '#46204C' },            // 6 accent
   ],
   winter: [
-    { name: 'Berry', hex: '#6B212C' },
-    { name: 'Branch', hex: '#685652' },
-    { name: 'Snowflake', hex: '#DCE0E8' },
-    { name: 'Mist', hex: '#8EA1AE' },
-    { name: 'Pine', hex: '#27363F' },
+    { name: 'Berry', hex: '#6B212C' },           // 0 red
+    { name: 'Branch', hex: '#685652' },          // 1 brown
+    { name: 'Frosted Gold', hex: '#C5A059' },    // 2 gold
+    { name: 'Muddy Olive', hex: '#404923' },     // 3 green
+    { name: 'Pine', hex: '#27363F' },            // 4 teal
+    { name: 'Mist', hex: '#8EA1AE' },            // 5 blue
+    { name: 'Snowflake', hex: '#DCE0E8' },       // 6 accent (neutral)
   ],
   spring: [
-    { name: 'Menthol', hex: '#D0E69E' },
-    { name: 'Pale Spring Bud', hex: '#E0F1BB' },
-    { name: 'Light Yellow', hex: '#FEFFE2' },
-    { name: 'Misty Rose', hex: '#FDE4DE' },
-    { name: 'Pink', hex: '#FFC2C3' },
-    { name: 'Baker-Miller Pink', hex: '#FA92B1' },
+    { name: 'Pastel Watermelon', hex: '#FF8C8C' }, // 0 red
+    { name: 'Misty Rose', hex: '#FDE4DE' },        // 1 orange (peach)
+    { name: 'Soft Muted Yellow', hex: '#F0EDAA' }, // 2 yellow
+    { name: 'Spring Bud', hex: '#D1DD93' },        // 3 green
+    { name: 'Pale Turquoise', hex: '#BDEEED' },    // 4 teal
+    { name: 'Periwinkle Mist', hex: '#C2D5F4' },   // 5 blue
+    { name: 'Light Yellow', hex: '#FEFFE2' },      // 6 accent (neutral)
   ],
   summer: [
-    { name: 'Tulip', hex: '#FC8585' },
-    { name: 'Topaz', hex: '#FFC86D' },
-    { name: 'Deep Champagne', hex: '#FBDBA2' },
-    { name: 'Antique White', hex: '#F6EADB' },
-    { name: 'Dark Sky Blue', hex: '#85CBD9' },
+    { name: 'Raspberry', hex: '#C2457A' },         // 0 red
+    { name: 'Topaz', hex: '#FFC86D' },             // 1 orange
+    { name: 'Deep Champagne', hex: '#FBDBA2' },    // 2 gold
+    { name: 'Medium Sea Green', hex: '#52B788' },  // 3 green
+    { name: 'Dark Sky Blue', hex: '#85CBD9' },     // 4 teal
+    { name: 'Antique White', hex: '#F6EADB' },     // 5 blue (neutral)
+    { name: 'Tulip', hex: '#FC8585' },             // 6 accent
   ],
 }
 
@@ -57,7 +75,7 @@ export const slotId = (i: number) => `slot-${i}`
 
 // Looks saved before seasonal palettes used named colors; map them onto slots.
 const LEGACY_SLOT: Record<string, number> = {
-  lavender: 0, mint: 1, peach: 2, butter: 3, lilac: 4, teal: 1, coral: 3, sage: 2,
+  lavender: 3, mint: 2, peach: 1, butter: 0, lilac: 6, teal: 2, coral: 0, sage: 1,
 }
 
 function slotIndex(colorId: string): number | null {
