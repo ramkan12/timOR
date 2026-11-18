@@ -11,6 +11,8 @@ import TaskCard from './TaskCard'
 import ProgressBar from './ProgressBar'
 import AddTaskModal from './AddTaskModal'
 import { findCardStyle } from '@/lib/cardMatch'
+import { clearMarkedDone, logMarkedDone, logWorkSession } from '@/lib/workSessions'
+import WorkHistoryModal from './WorkHistoryModal'
 import { isAutumn, isHalloween, paletteSeasonForDate } from '@/lib/season'
 import HalloweenDecor from './HalloweenDecor'
 import AutumnDecor from './AutumnDecor'
@@ -42,6 +44,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
   const [showCalendar, setShowCalendar] = useState(false)
   const [showSpeccials, setShowSpeccials] = useState(false)
   const [copyingTask, setCopyingTask] = useState<Task | null>(null)
+  const [historyTask, setHistoryTask] = useState<Task | null>(null)
   const [copyToast, setCopyToast] = useState<string | null>(null)
   const [now, setNow] = useState(Date.now())
   const [fetchKey, setFetchKey] = useState(0)
@@ -101,10 +104,11 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
       .or(`due_date.is.null,due_date.lt.${today}`)
       .then(async ({ data }) => {
         if (!data || data.length === 0) return
-        await Promise.all((data as Task[]).map(t => {
-          const cap = endOfDayMs(t.date)
-          const elapsed = Math.max(0, Math.floor((Math.min(Date.now(), cap) - new Date(t.timer_started_at!).getTime()) / 1000))
-          return supabase.from('tasks').update({
+        await Promise.all((data as Task[]).map(async t => {
+          const end = Math.min(Date.now(), endOfDayMs(t.date))
+          const elapsed = Math.max(0, Math.floor((end - new Date(t.timer_started_at!).getTime()) / 1000))
+          await logWorkSession(t, end)
+          await supabase.from('tasks').update({
             timer_started_at: null,
             actual_seconds: t.actual_seconds + elapsed,
           }).eq('id', t.id)
@@ -258,10 +262,11 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
   }
 
   async function handleStopStale(task: Task) {
-    const cap = endOfDayMs(task.date)
-    const elapsed = Math.max(0, Math.floor((Math.min(Date.now(), cap) - new Date(task.timer_started_at!).getTime()) / 1000))
+    const end = Math.min(Date.now(), endOfDayMs(task.date))
+    const elapsed = Math.max(0, Math.floor((end - new Date(task.timer_started_at!).getTime()) / 1000))
     const updated: Task = { ...task, timer_started_at: null, actual_seconds: task.actual_seconds + elapsed }
     setTasks(prev => prev.map(t => t.id === task.id ? updated : t))
+    await logWorkSession(task, end)
     await supabase.from('tasks').update({ timer_started_at: null, actual_seconds: updated.actual_seconds }).eq('id', task.id)
   }
 
@@ -318,11 +323,15 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
       const completedCount = tasks.filter(t => t.is_complete && t.id !== task.id).length
       const updated: Task = { ...task, is_complete: true, timer_started_at: null, actual_seconds: task.actual_seconds + extraSeconds, sort_order: completedCount }
       setTasks(prev => prev.map(t => t.id === task.id ? updated : t))
+      await logWorkSession(task)
+      // Never timed: it's credited its estimate, so show that in Work History too
+      if (updated.actual_seconds === 0) await logMarkedDone(task)
       await supabase.from('tasks').update({ is_complete: true, timer_started_at: null, actual_seconds: updated.actual_seconds, sort_order: completedCount }).eq('id', task.id)
     } else {
       const incompleteCount = tasks.filter(t => !t.is_complete && t.id !== task.id).length
       const updated: Task = { ...task, is_complete: false, timer_started_at: null, sort_order: incompleteCount }
       setTasks(prev => prev.map(t => t.id === task.id ? updated : t))
+      await clearMarkedDone(task.id)
       await supabase.from('tasks').update({ is_complete: false, timer_started_at: null, sort_order: incompleteCount }).eq('id', task.id)
     }
   }
@@ -342,6 +351,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
       .not('timer_started_at', 'is', null)
     const otherRunning = ((runningRows as Task[] | null) ?? []).filter(t => t.id !== taskToStart.id)
     if (otherRunning.length > 0) {
+      await Promise.all(otherRunning.map(t => logWorkSession(t)))
       const stoppedOthers = otherRunning.map(t => {
         const elapsed = Math.floor((Date.now() - new Date(t.timer_started_at!).getTime()) / 1000)
         return { ...t, timer_started_at: null, actual_seconds: t.actual_seconds + elapsed }
@@ -473,6 +483,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
                     onMarkDone={() => handleMarkDone(task)}
                     onStopStale={() => handleStopStale(task)}
                     onCopyTask={() => setCopyingTask(task)}
+                    onShowHistory={() => setHistoryTask(task)}
                     cardStyle={findCardStyle(cardStyles, task.title, task.description)}
                     paletteSeason={paletteSeasonForDate(selectedDate)}
                   />
@@ -504,6 +515,7 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
                         onMarkDone={() => handleMarkDone(task)}
                         onStopStale={() => handleStopStale(task)}
                     onCopyTask={() => setCopyingTask(task)}
+                    onShowHistory={() => setHistoryTask(task)}
                     cardStyle={findCardStyle(cardStyles, task.title, task.description)}
                     paletteSeason={paletteSeasonForDate(selectedDate)}
                       />
@@ -547,6 +559,15 @@ export default function UserPanel({ panelUserId, currentUser, selectedDate, onDa
           panelUserId={panelUserId}
           onSelectDate={(date) => { onDateChange(date); setShowCalendar(false) }}
           onClose={() => setShowCalendar(false)}
+        />
+      )}
+
+      {/* Work History (mounted at panel root so it isn't clipped by the card) */}
+      {historyTask && (
+        <WorkHistoryModal
+          task={tasks.find(t => t.id === historyTask.id) ?? historyTask}
+          isSleeping={isSleeping}
+          onClose={() => setHistoryTask(null)}
         />
       )}
 

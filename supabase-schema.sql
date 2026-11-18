@@ -54,3 +54,20 @@ create table if not exists card_styles (
 alter table card_styles enable row level security;
 create policy "allow all on card_styles" on card_styles for all using (true) with check (true);
 alter publication supabase_realtime add table card_styles;
+
+-- Work History: one row per timer run of 60s+ (written by lib/workSessions.ts)
+create table if not exists work_sessions (
+  id uuid primary key default gen_random_uuid(),
+  task_id uuid not null references tasks(id) on delete cascade,
+  user_id text not null references users(id),
+  started_at timestamptz not null,
+  ended_at timestamptz not null,
+  seconds integer not null,
+  kind text not null default 'timer' -- 'timer' | 'marked_done'
+);
+create index if not exists work_sessions_task_id_idx on work_sessions (task_id);
+alter table work_sessions enable row level security;
+create policy "allow all on work_sessions" on work_sessions for all using (true) with check (true);
+
+-- If work_sessions already exists without it:
+alter table work_sessions add column if not exists kind text not null default 'timer';

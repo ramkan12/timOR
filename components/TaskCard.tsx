@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Play, Square, CheckCircle2, Clock, Pencil, Copy, Trash2, GripVertical } from 'lucide-react'
+import { Play, Square, CheckCircle2, Clock, Pencil, Copy, Trash2, GripVertical, History } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { CardStyle, Task, UserId } from '@/types'
 import { minutesToDisplay, secondsToDisplay, getElapsedSeconds, completedCreditSeconds } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { getCardLook } from '@/lib/cardStyles'
+import { logWorkSession } from '@/lib/workSessions'
 import type { PaletteSeason } from '@/lib/season'
 import ProgressBar from './ProgressBar'
 
@@ -23,11 +24,12 @@ interface Props {
   onMarkDone: () => void
   onStopStale: () => void
   onCopyTask: () => void
+  onShowHistory: () => void
   cardStyle?: CardStyle
   paletteSeason?: PaletteSeason
 }
 
-export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, onUpdate, onDelete, onEdit, onStartTimer, onMarkDone, onStopStale, onCopyTask, cardStyle, paletteSeason }: Props) {
+export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, onUpdate, onDelete, onEdit, onStartTimer, onMarkDone, onStopStale, onCopyTask, onShowHistory, cardStyle, paletteSeason }: Props) {
   const isOwner = currentUser === task.user_id
   const canInteract = isOwner && !isReadOnly
 
@@ -80,6 +82,7 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
       timer_started_at: null,
     }
     onUpdate(updated)
+    await logWorkSession(task)
     await supabase.from('tasks').update({
       actual_seconds: updated.actual_seconds,
       timer_started_at: null,
@@ -90,6 +93,8 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
     if (!canInteract) return
     onMarkDone()
   }
+
+  const historyBtn = `rounded-lg p-1.5 transition-colors ${isSleeping ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-stone-500 hover:text-stone-700 hover:bg-stone-900/[0.07]'}`
 
   const look = getCardLook(cardStyle, isSleeping, paletteSeason)
 
@@ -226,6 +231,13 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
                       Copy to day…
                     </button>
                     <button
+                      onClick={() => { onShowHistory(); setShowMenu(false) }}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${isSleeping ? 'text-slate-200 hover:bg-slate-700 active:bg-slate-600' : 'text-stone-700 hover:bg-stone-100 active:bg-stone-200'}`}
+                    >
+                      <History size={14} className={isSleeping ? 'text-slate-400' : 'text-stone-500'} />
+                      Work History
+                    </button>
+                    <button
                       onClick={() => { onEdit(); setShowMenu(false) }}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${isSleeping ? 'text-slate-200 hover:bg-slate-700 active:bg-slate-600' : 'text-stone-700 hover:bg-stone-100 active:bg-stone-200'}`}
                     >
@@ -244,16 +256,34 @@ export default function TaskCard({ task, currentUser, isReadOnly, isSleeping, on
                 )}
               </div>
             ) : (
-              /* Read-only day: only action available is copying this task elsewhere */
-              <button
-                onClick={onCopyTask}
-                title="Copy to another day"
-                className={`rounded-lg p-1.5 transition-colors ${isSleeping ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-stone-500 hover:text-stone-700 hover:bg-stone-900/[0.07]'}`}
-              >
-                <Copy size={14} />
+              /* Read-only day: copy this task elsewhere, or look at when it was worked on */
+              <>
+                <button
+                  onClick={onCopyTask}
+                  title="Copy to another day"
+                  className={`rounded-lg p-1.5 transition-colors ${isSleeping ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-stone-500 hover:text-stone-700 hover:bg-stone-900/[0.07]'}`}
+                >
+                  <Copy size={14} />
+                </button>
+                <button onClick={onShowHistory} title="Work History" className={historyBtn}>
+                  <History size={14} />
+                </button>
+              </>
+            )}
+            {/* Completed cards have no menu (tapping the check un-marks), so give them a direct history button */}
+            {canInteract && task.is_complete && (
+              <button onClick={onShowHistory} title="Work History" className={historyBtn}>
+                <History size={14} />
               </button>
             )}
           </div>
+        )}
+
+        {/* Partner's cards: read-only Work History */}
+        {!isOwner && (
+          <button onClick={onShowHistory} title="Work History" className={`flex-shrink-0 ${historyBtn}`}>
+            <History size={14} />
+          </button>
         )}
       </div>
     </div>

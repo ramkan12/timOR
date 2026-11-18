@@ -20,6 +20,7 @@ The rule: no talking until both have logged 7 hours of focused work for the day.
 - **Progress bar:** tracks hours toward the 7-hour goal as timers run
 - **Tasks:** add, edit, delete and drag to reorder; copy a task to another day; mark it done
 - **Usual cards:** New Task suggests your 5 most repeated tasks from the last 30 days so you can add them in one tap
+- **Work History:** see exactly when you worked on a task (timer runs under a minute don't count). You can view each other's too
 - **Card colors:** color any card from Edit Task. The color is remembered for every card with the same title and description
 - **Notes:** a little Instagram-style note bubble per person, with reactions
 - **SPECCIALS:** a weekly reflection board (with confetti when you fill it in)

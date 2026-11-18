@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Moon, Sun } from 'lucide-react'
+import { format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { User, UserId } from '@/types'
 import { formatSleepTimestamp } from '@/lib/utils'
@@ -93,19 +94,52 @@ export function SleepPill({ user, isOwner, now, onToggle, compact = false }: {
     : 'bg-sky-100 text-sky-600 border-sky-200'
   const asleepColors = 'bg-gradient-to-r from-indigo-500 to-slate-700 text-indigo-50 border-indigo-400'
 
-  const title = isOwner
-    ? 'Toggle sleep status'
-    : `${isRiham ? 'Rihamie' : 'Omarie'}'s sleep status`
+  // Hover shows the exact toggle time, e.g. "Asleep since Tue, Nov 17 at 11:42 PM"
+  const toggledAt = user.sleep_updated_at ? format(new Date(user.sleep_updated_at), "EEE, MMM d 'at' h:mm a") : null
+  const since = toggledAt ? `${isSleeping ? 'Asleep' : 'Awake'} since ${toggledAt}` : ''
+  const label = [
+    isOwner ? 'Toggle sleep status' : `${isRiham ? 'Rihamie' : 'Omarie'}'s sleep status`,
+    since,
+  ].filter(Boolean).join(' · ')
+
+  // Custom tooltip instead of the native `title`: it shows instantly on hover, works on the
+  // partner's pill (native tooltips never show on disabled buttons), and works on touch:
+  // tapping the partner's pill toggles it, and toggling your own briefly shows the new time.
+  const [tipOpen, setTipOpen] = useState(false)
+  const tipTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  function flashTip() {
+    setTipOpen(true)
+    if (tipTimer.current) clearTimeout(tipTimer.current)
+    tipTimer.current = setTimeout(() => setTipOpen(false), 3000)
+  }
+  useEffect(() => () => { if (tipTimer.current) clearTimeout(tipTimer.current) }, [])
+  function handleClick() {
+    if (isOwner) { onToggle(!isSleeping); flashTip() }
+    else if (tipOpen) setTipOpen(false)
+    else flashTip()
+  }
+  const tooltip = since ? (
+    <span
+      role="tooltip"
+      className={`pointer-events-none absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-stone-900 px-2.5 py-1.5 text-[11px] font-medium text-white shadow-lg transition-opacity duration-150 ${
+        tipOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+      }`}
+    >
+      <span className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-stone-900" />
+      <span className="relative">{since}</span>
+    </span>
+  ) : null
 
   if (compact) {
     return (
+      <span className="group relative inline-flex">
       <button
-        onClick={() => isOwner && onToggle(!isSleeping)}
-        disabled={!isOwner}
-        title={title}
+        onClick={handleClick}
+        aria-label={label}
+        aria-disabled={!isOwner}
         className={`relative flex items-center justify-center w-7 h-7 rounded-full border transition-all duration-500 ${
           isSleeping ? asleepColors : awakeColors
-        } ${isOwner ? 'cursor-pointer hover:brightness-95 active:scale-95' : 'cursor-default opacity-90'} ${
+        } ${isOwner ? 'cursor-pointer hover:brightness-95 active:scale-95' : 'cursor-help opacity-90'} ${
           needsNudge ? 'ring-2 ring-amber-400 animate-pulse shadow-[0_0_8px_2px_rgba(251,191,36,0.6)]' : ''
         }`}
       >
@@ -118,17 +152,20 @@ export function SleepPill({ user, isOwner, now, onToggle, compact = false }: {
           <Sun size={12} />
         )}
       </button>
+      {tooltip}
+      </span>
     )
   }
 
   return (
+    <span className="group relative inline-flex">
     <button
-      onClick={() => isOwner && onToggle(!isSleeping)}
-      disabled={!isOwner}
-      title={title}
+      onClick={handleClick}
+      aria-label={label}
+      aria-disabled={!isOwner}
       className={`relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border transition-all duration-500 ${
         isSleeping ? asleepColors : awakeColors
-      } ${isOwner ? 'cursor-pointer hover:brightness-95 active:scale-95' : 'cursor-default opacity-90'} ${
+      } ${isOwner ? 'cursor-pointer hover:brightness-95 active:scale-95' : 'cursor-help opacity-90'} ${
         needsNudge ? 'ring-2 ring-amber-400 animate-pulse shadow-[0_0_10px_2px_rgba(251,191,36,0.6)]' : ''
       }`}
     >
@@ -148,6 +185,8 @@ export function SleepPill({ user, isOwner, now, onToggle, compact = false }: {
         {timeLabel ? `· ${timeLabel}` : ''}
       </span>
     </button>
+    {tooltip}
+    </span>
   )
 }
 

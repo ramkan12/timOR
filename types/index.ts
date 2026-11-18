@@ -56,3 +56,14 @@ export interface CardStyle {
   pattern: string
   updated_at: string
 }
+
+// One continuous timer run on a task (only runs of 60s+ are stored)
+export interface WorkSession {
+  id: string
+  task_id: string
+  user_id: UserId
+  started_at: string
+  ended_at: string
+  seconds: number
+  kind: 'timer' | 'marked_done' // marked_done = finished without a timer; the estimate placed just before marking
+}
